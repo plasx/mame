@@ -1530,6 +1530,8 @@ void lua_engine::initialize()
 	screen_dev_type["height"] = sol::property([] (screen_device &sdev) { return sdev.visible_area().height(); });
 	screen_dev_type["refresh"] = sol::property([] (screen_device &sdev) { return ATTOSECONDS_TO_HZ(sdev.refresh_attoseconds()); });
 	screen_dev_type["refresh_attoseconds"] = sol::property([] (screen_device &sdev) { return sdev.refresh_attoseconds(); });
+	screen_dev_type["bitmap_binary"] = sol::property([this] (screen_device &sdev) { return machine().video().get_bitmap_binary(&sdev); });
+	screen_dev_type["bitmap_format"] = sol::property([this] (screen_device &sdev) { return machine().video().get_bitmap_format(&sdev); });
 	screen_dev_type["xofffset"] = sol::property(&screen_device::xoffset);
 	screen_dev_type["yofffset"] = sol::property(&screen_device::yoffset);
 	screen_dev_type["xscale"] = sol::property(&screen_device::xscale);

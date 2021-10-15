@@ -82,6 +82,10 @@ public:
 	void save_active_screen_snapshots();
 	void save_input_timecode();
 
+	// bitmaps
+	std::string get_bitmap_binary(screen_device *screen);
+	std::string get_bitmap_format(screen_device *screen);
+
 	// movies
 	void begin_recording(const char *name, movie_recording::format format);
 	void end_recording();
