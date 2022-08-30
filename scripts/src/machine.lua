@@ -37,6 +37,8 @@ files {
 files {
 	MAME_DIR .. "src/devices/imagedev/bitbngr.cpp",
 	MAME_DIR .. "src/devices/imagedev/bitbngr.h",
+	MAME_DIR .. "src/devices/imagedev/cartrom.cpp",
+	MAME_DIR .. "src/devices/imagedev/cartrom.h",
 	MAME_DIR .. "src/devices/imagedev/cassette.cpp",
 	MAME_DIR .. "src/devices/imagedev/cassette.h",
 	MAME_DIR .. "src/devices/imagedev/chd_cd.cpp",
@@ -49,6 +51,10 @@ files {
 	MAME_DIR .. "src/devices/imagedev/floppy.h",
 	MAME_DIR .. "src/devices/imagedev/harddriv.cpp",
 	MAME_DIR .. "src/devices/imagedev/harddriv.h",
+	MAME_DIR .. "src/devices/imagedev/magtape.cpp",
+	MAME_DIR .. "src/devices/imagedev/magtape.h",
+	MAME_DIR .. "src/devices/imagedev/memcard.cpp",
+	MAME_DIR .. "src/devices/imagedev/memcard.h",
 	MAME_DIR .. "src/devices/imagedev/mfmhd.cpp",
 	MAME_DIR .. "src/devices/imagedev/mfmhd.h",
 	MAME_DIR .. "src/devices/imagedev/microdrv.cpp",
@@ -57,6 +63,8 @@ files {
 	MAME_DIR .. "src/devices/imagedev/midiin.h",
 	MAME_DIR .. "src/devices/imagedev/midiout.cpp",
 	MAME_DIR .. "src/devices/imagedev/midiout.h",
+	MAME_DIR .. "src/devices/imagedev/papertape.cpp",
+	MAME_DIR .. "src/devices/imagedev/papertape.h",
 	MAME_DIR .. "src/devices/imagedev/picture.cpp",
 	MAME_DIR .. "src/devices/imagedev/picture.h",
 	MAME_DIR .. "src/devices/imagedev/printer.cpp",
@@ -151,6 +159,18 @@ if (MACHINES["AM2901B"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/am2901b.cpp",
 		MAME_DIR .. "src/devices/machine/am2901b.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/amiga_copper.h,MACHINES["AMIGA_COPPER"] = true
+---------------------------------------------------
+
+if (MACHINES["AMIGA_COPPER"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/amiga_copper.cpp",
+		MAME_DIR .. "src/devices/machine/amiga_copper.h",
 	}
 end
 
@@ -1127,6 +1147,16 @@ if (MACHINES["CXD1095"]~=null) then
 	}
 end
 
+--@src/devices/machine/dl11.h,MACHINES["DL11"] = true
+---------------------------------------------------
+
+if (MACHINES["DL11"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/dl11.cpp",
+		MAME_DIR .. "src/devices/machine/dl11.h",
+	}
+end
+
 --@src/devices/machine/ds1204.h,MACHINES["DS1204"] = true
 ---------------------------------------------------
 
@@ -1146,6 +1176,18 @@ if (MACHINES["DS1205"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/ds1205.cpp",
 		MAME_DIR .. "src/devices/machine/ds1205.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/ds1207.h,MACHINES["DS1207"] = true
+---------------------------------------------------
+
+if (MACHINES["DS1207"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/ds1207.cpp",
+		MAME_DIR .. "src/devices/machine/ds1207.h",
 	}
 end
 
@@ -1417,7 +1459,9 @@ end
 
 ---------------------------------------------------
 --
---@src/devices/machine/gt913.h,MACHINES["GT913"] = true
+--@src/devices/machine/gt913_io.h,MACHINES["GT913"] = true
+--@src/devices/machine/gt913_kbd.h,MACHINES["GT913"] = true
+--@src/devices/machine/gt913_snd.h,MACHINES["GT913"] = true
 ---------------------------------------------------
 
 if (MACHINES["GT913"]~=null) then
@@ -1428,6 +1472,18 @@ if (MACHINES["GT913"]~=null) then
 		MAME_DIR .. "src/devices/machine/gt913_kbd.h",
 		MAME_DIR .. "src/devices/machine/gt913_snd.cpp",
 		MAME_DIR .. "src/devices/machine/gt913_snd.h",
+	}
+end
+
+--------------------------------------------------
+--
+--@src/devices/machine/generic_spi_flash.h,MACHINES["GENERIC_SPI_FLASH"] = true
+--------------------------------------------------
+
+if (MACHINES["GENERIC_SPI_FLASH"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/generic_spi_flash.cpp",
+		MAME_DIR .. "src/devices/machine/generic_spi_flash.h",
 	}
 end
 
@@ -1834,30 +1890,6 @@ end
 
 ---------------------------------------------------
 --
---@src/devices/machine/m950x0.h,MACHINES["M950X0"] = true
----------------------------------------------------
-
-if (MACHINES["M950X0"]~=null) then
-	files {
-		MAME_DIR .. "src/devices/machine/m950x0.cpp",
-		MAME_DIR .. "src/devices/machine/m950x0.h",
-	}
-end
-
----------------------------------------------------
---
---@src/devices/machine/mm5740.h,MACHINES["MM5740"] = true
----------------------------------------------------
-
-if (MACHINES["MM5740"]~=null) then
-	files {
-		MAME_DIR .. "src/devices/machine/mm5740.cpp",
-		MAME_DIR .. "src/devices/machine/mm5740.h",
-	}
-end
-
----------------------------------------------------
---
 --@src/devices/machine/kb3600.h,MACHINES["KB3600"] = true
 ---------------------------------------------------
 
@@ -1865,6 +1897,18 @@ if (MACHINES["KB3600"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/kb3600.cpp",
 		MAME_DIR .. "src/devices/machine/kb3600.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/kr1601rr1.h,MACHINES["KR1601RR1"] = true
+---------------------------------------------------
+
+if (MACHINES["KR1601RR1"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/kr1601rr1.cpp",
+		MAME_DIR .. "src/devices/machine/kr1601rr1.h",
 	}
 end
 
@@ -1939,6 +1983,18 @@ if (MACHINES["LDV1000"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/ldv1000.cpp",
 		MAME_DIR .. "src/devices/machine/ldv1000.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/ldv4200hle.h,MACHINES["LDV4200HLE"] = true
+---------------------------------------------------
+
+if (MACHINES["LDV4200HLE"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/ldv4200hle.cpp",
+		MAME_DIR .. "src/devices/machine/ldv4200hle.h",
 	}
 end
 
@@ -2047,6 +2103,18 @@ if (MACHINES["M6M80011AP"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/m6m80011ap.cpp",
 		MAME_DIR .. "src/devices/machine/m6m80011ap.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/m950x0.h,MACHINES["M950X0"] = true
+---------------------------------------------------
+
+if (MACHINES["M950X0"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/m950x0.cpp",
+		MAME_DIR .. "src/devices/machine/m950x0.h",
 	}
 end
 
@@ -2363,6 +2431,18 @@ if (MACHINES["MM5307"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/mm5307.cpp",
 		MAME_DIR .. "src/devices/machine/mm5307.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/mm5740.h,MACHINES["MM5740"] = true
+---------------------------------------------------
+
+if (MACHINES["MM5740"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/mm5740.cpp",
+		MAME_DIR .. "src/devices/machine/mm5740.h",
 	}
 end
 
@@ -2693,6 +2773,22 @@ if (MACHINES["PCI"]~=null) then
 		MAME_DIR .. "src/devices/machine/vrc5074.h",
 		MAME_DIR .. "src/devices/machine/gt64xxx.cpp",
 		MAME_DIR .. "src/devices/machine/gt64xxx.h",
+		MAME_DIR .. "src/devices/machine/sis5513_ide.cpp",
+		MAME_DIR .. "src/devices/machine/sis5513_ide.h",
+		MAME_DIR .. "src/devices/machine/sis630_host.cpp",
+		MAME_DIR .. "src/devices/machine/sis630_host.h",
+		MAME_DIR .. "src/devices/machine/sis630_gui.cpp",
+		MAME_DIR .. "src/devices/machine/sis630_gui.h",
+		MAME_DIR .. "src/devices/machine/sis7001_usb.cpp",
+		MAME_DIR .. "src/devices/machine/sis7001_usb.h",
+		MAME_DIR .. "src/devices/machine/sis7018_audio.cpp",
+		MAME_DIR .. "src/devices/machine/sis7018_audio.h",
+		MAME_DIR .. "src/devices/machine/sis900_eth.cpp",
+		MAME_DIR .. "src/devices/machine/sis900_eth.h",
+		MAME_DIR .. "src/devices/machine/sis950_lpc.cpp",
+		MAME_DIR .. "src/devices/machine/sis950_lpc.h",
+		MAME_DIR .. "src/devices/machine/sis950_smbus.cpp",
+		MAME_DIR .. "src/devices/machine/sis950_smbus.h",
 		MAME_DIR .. "src/devices/machine/sis85c496.cpp",
 		MAME_DIR .. "src/devices/machine/sis85c496.h",
 	}
@@ -3030,6 +3126,17 @@ if (MACHINES["SAA1043"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/saa1043.cpp",
 		MAME_DIR .. "src/devices/machine/saa1043.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/scc66470.h,MACHINES["SCC66470"] = true
+---------------------------------------------------
+if (MACHINES["SCC66470"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/scc66470.cpp",
+		MAME_DIR .. "src/devices/machine/scc66470.h",
 	}
 end
 
@@ -4751,6 +4858,19 @@ end
 
 ---------------------------------------------------
 --
+--@src/devices/machine/spifi3.h,MACHINES["SPIFI3"] = true
+---------------------------------------------------
+
+if (MACHINES["SPIFI3"]~=null) then
+	MACHINES["NSCSI"] = true
+	files {
+		MAME_DIR .. "src/devices/machine/spifi3.cpp",
+		MAME_DIR .. "src/devices/machine/spifi3.h",
+	}
+end
+
+---------------------------------------------------
+--
 --@src/devices/machine/applefdintf.h,MACHINES["APPLE_FDINTF"] = true
 ---------------------------------------------------
 if (MACHINES["APPLE_FDINTF"]~=null) then
@@ -4867,5 +4987,138 @@ if (MACHINES["NS32082"]~=null) then
 	files {
 		MAME_DIR .. "src/devices/machine/ns32082.cpp",
 		MAME_DIR .. "src/devices/machine/ns32082.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/bitmap_printer.h,MACHINES["BITMAP_PRINTER"] = true
+---------------------------------------------------
+if (MACHINES["BITMAP_PRINTER"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/bitmap_printer.cpp",
+		MAME_DIR .. "src/devices/machine/bitmap_printer.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/ns32382.h,MACHINES["NS32382"] = true
+---------------------------------------------------
+if (MACHINES["NS32382"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/ns32382.cpp",
+		MAME_DIR .. "src/devices/machine/ns32382.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/fm_scsi.h,MACHINES["FM_SCSI"] = true
+---------------------------------------------------
+if (MACHINES["FM_SCSI"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/fm_scsi.cpp",
+		MAME_DIR .. "src/devices/machine/fm_scsi.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/archimedes_keyb.h,MACHINES["ARCHIMEDES_KEYB"] = true
+---------------------------------------------------
+if (MACHINES["ARCHIMEDES_KEYB"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/archimedes_keyb.cpp",
+		MAME_DIR .. "src/devices/machine/archimedes_keyb.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/cammu.h,MACHINES["CAMMU"] = true
+---------------------------------------------------
+if (MACHINES["CAMMU"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/cammu.cpp",
+		MAME_DIR .. "src/devices/machine/cammu.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/at.h,MACHINES["AT_MB"] = true
+---------------------------------------------------
+if (MACHINES["AT_MB"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/at.cpp",
+		MAME_DIR .. "src/devices/machine/at.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/bacta_datalogger.h,MACHINES["BACTA_DATALOGGER"] = true
+---------------------------------------------------
+if (MACHINES["BACTA_DATALOGGER"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/bacta_datalogger.cpp",
+		MAME_DIR .. "src/devices/machine/bacta_datalogger.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/nmk112.h,MACHINES["NMK112"] = true
+---------------------------------------------------
+if (MACHINES["NMK112"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/nmk112.cpp",
+		MAME_DIR .. "src/devices/machine/nmk112.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/saa7191.h,MACHINES["SAA7191"] = true
+---------------------------------------------------
+if (MACHINES["SAA7191"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/saa7191.cpp",
+		MAME_DIR .. "src/devices/machine/saa7191.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/segacrpt_device.h,MACHINES["SEGACRPT"] = true
+---------------------------------------------------
+if (MACHINES["SEGACRPT"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/segacrpt_device.cpp",
+		MAME_DIR .. "src/devices/machine/segacrpt_device.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/segacrp2_device.h,MACHINES["SEGACRP2"] = true
+---------------------------------------------------
+if (MACHINES["SEGACRP2"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/segacrp2_device.cpp",
+		MAME_DIR .. "src/devices/machine/segacrp2_device.h",
+	}
+end
+
+---------------------------------------------------
+--
+--@src/devices/machine/am9516.h,MACHINES["AM9516"] = true
+---------------------------------------------------
+
+if (MACHINES["AM9516"]~=null) then
+	files {
+		MAME_DIR .. "src/devices/machine/am9516.cpp",
+		MAME_DIR .. "src/devices/machine/am9516.h",
 	}
 end

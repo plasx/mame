@@ -13,6 +13,7 @@
 #include "rendlay.h"
 
 #include "emuopts.h"
+#include "fileio.h"
 #include "rendfont.h"
 #include "rendutil.h"
 #include "video/rgbutil.h"
@@ -57,6 +58,9 @@
 
 // screenless layouts
 #include "noscreens.lh"
+
+// single screen layouts
+#include "monitors.lh"
 
 // dual screen layouts
 #include "dualhsxs.lh"
@@ -1246,13 +1250,9 @@ int get_blend_mode(emu::render::detail::view_environment &env, util::xml::data_n
 layout_element::make_component_map const layout_element::s_make_component{
 	{ "image",         &make_component<image_component>         },
 	{ "text",          &make_component<text_component>          },
-	{ "dotmatrix",     &make_dotmatrix_component<8>             },
-	{ "dotmatrix5dot", &make_dotmatrix_component<5>             },
-	{ "dotmatrixdot",  &make_dotmatrix_component<1>             },
 	{ "simplecounter", &make_component<simplecounter_component> },
 	{ "reel",          &make_component<reel_component>          },
 	{ "led7seg",       &make_component<led7seg_component>       },
-	{ "led8seg_gts1",  &make_component<led8seg_gts1_component>  },
 	{ "led14seg",      &make_component<led14seg_component>      },
 	{ "led14segsc",    &make_component<led14segsc_component>    },
 	{ "led16seg",      &make_component<led16seg_component>      },
@@ -2112,7 +2112,7 @@ protected:
 		}
 		else if (c.a)
 		{
-			// compute premultiplied colors
+			// compute premultiplied color
 			u32 const a(c.a * 255.0F);
 			u32 const r(u32(c.r * (255.0F * 255.0F)) * a);
 			u32 const g(u32(c.g * (255.0F * 255.0F)) * a);
@@ -2148,9 +2148,9 @@ public:
 		render_color const c(color(state));
 		u32 const f(rgb_t(u8(c.r * 255), u8(c.g * 255), u8(c.b * 255)));
 		u32 const a(c.a * 255.0F);
-		u32 const r(c.r * c.a * (255.0F * 255.0F * 255.0F));
-		u32 const g(c.g * c.a * (255.0F * 255.0F * 255.0F));
-		u32 const b(c.b * c.a * (255.0F * 255.0F * 255.0F));
+		u32 const r(c.r * (255.0F * 255.0F) * a);
+		u32 const g(c.g * (255.0F * 255.0F) * a);
+		u32 const b(c.b * (255.0F * 255.0F) * a);
 		u32 const inva(255 - a);
 		if (!a)
 			return;
@@ -2468,6 +2468,7 @@ public:
 	led7seg_component(environment &env, util::xml::data_node const &compnode)
 		: component(env, compnode)
 	{
+		m_invert = env.get_attribute_int(compnode, "invert", 0);
 	}
 
 protected:
@@ -2476,8 +2477,8 @@ protected:
 
 	virtual void draw_aligned(running_machine &machine, bitmap_argb32 &dest, const rectangle &bounds, int state) override
 	{
-		rgb_t const onpen = rgb_t(0xff, 0xff, 0xff, 0xff);
-		rgb_t const offpen = rgb_t(0x20, 0xff, 0xff, 0xff);
+		rgb_t const onpen = rgb_t(m_invert ? 0x20 : 0xff, 0xff, 0xff, 0xff);
+		rgb_t const offpen = rgb_t(m_invert ? 0xff : 0x20, 0xff, 0xff, 0xff);
 
 		// sizes for computation
 		int const bmwidth = 250;
@@ -2519,74 +2520,8 @@ protected:
 		// resample to the target size
 		render_resample_argb_bitmap_hq(dest, tempbitmap, color(state));
 	}
-};
-
-
-// 8-segment fluorescent (Gottlieb System 1)
-class layout_element::led8seg_gts1_component : public component
-{
-public:
-	// construction/destruction
-	led8seg_gts1_component(environment &env, util::xml::data_node const &compnode)
-		: component(env, compnode)
-	{
-	}
-
-protected:
-	// overrides
-	virtual int maxstate() const override { return 255; }
-
-	virtual void draw_aligned(running_machine &machine, bitmap_argb32 &dest, const rectangle &bounds, int state) override
-	{
-		rgb_t const onpen = rgb_t(0xff, 0xff, 0xff, 0xff);
-		rgb_t const offpen = rgb_t(0x20, 0xff, 0xff, 0xff);
-		rgb_t const backpen = rgb_t(0x00, 0x00, 0x00, 0x00);
-
-		// sizes for computation
-		int const bmwidth = 250;
-		int const bmheight = 400;
-		int const segwidth = 40;
-		int const skewwidth = 40;
-
-		// allocate a temporary bitmap for drawing
-		bitmap_argb32 tempbitmap(bmwidth + skewwidth, bmheight);
-		tempbitmap.fill(backpen);
-
-		// top bar
-		draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, 0 + segwidth/2, segwidth, (state & (1 << 0)) ? onpen : offpen);
-
-		// top-right bar
-		draw_segment_vertical(tempbitmap, 0 + 2*segwidth/3, bmheight/2 - segwidth/3, bmwidth - segwidth/2, segwidth, (state & (1 << 1)) ? onpen : offpen);
-
-		// bottom-right bar
-		draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, bmwidth - segwidth/2, segwidth, (state & (1 << 2)) ? onpen : offpen);
-
-		// bottom bar
-		draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, bmwidth - 2*segwidth/3, bmheight - segwidth/2, segwidth, (state & (1 << 3)) ? onpen : offpen);
-
-		// bottom-left bar
-		draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3, bmheight - 2*segwidth/3, 0 + segwidth/2, segwidth, (state & (1 << 4)) ? onpen : offpen);
-
-		// top-left bar
-		draw_segment_vertical(tempbitmap, 0 + 2*segwidth/3, bmheight/2 - segwidth/3, 0 + segwidth/2, segwidth, (state & (1 << 5)) ? onpen : offpen);
-
-		// horizontal bars
-		draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3, 2*bmwidth/3 - 2*segwidth/3, bmheight/2, segwidth, (state & (1 << 6)) ? onpen : offpen);
-		draw_segment_horizontal(tempbitmap, 0 + 2*segwidth/3 + bmwidth/2, bmwidth - 2*segwidth/3, bmheight/2, segwidth, (state & (1 << 6)) ? onpen : offpen);
-
-		// vertical bars
-		draw_segment_vertical(tempbitmap, 0 + segwidth/3 - 8, bmheight/2 - segwidth/3 + 2, 2*bmwidth/3 - segwidth/2 - 4, segwidth + 8, backpen);
-		draw_segment_vertical(tempbitmap, 0 + segwidth/3, bmheight/2 - segwidth/3, 2*bmwidth/3 - segwidth/2 - 4, segwidth, (state & (1 << 7)) ? onpen : offpen);
-
-		draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3 - 2, bmheight - segwidth/3 + 8, 2*bmwidth/3 - segwidth/2 - 4, segwidth + 8, backpen);
-		draw_segment_vertical(tempbitmap, bmheight/2 + segwidth/3, bmheight - segwidth/3, 2*bmwidth/3 - segwidth/2 - 4, segwidth, (state & (1 << 7)) ? onpen : offpen);
-
-		// apply skew
-		apply_skew(tempbitmap, 40);
-
-		// resample to the target size
-		render_resample_argb_bitmap_hq(dest, tempbitmap, color(state));
-	}
+private:
+	int m_invert = 0;
 };
 
 
@@ -3079,47 +3014,6 @@ protected:
 };
 
 
-// row of dots for a dotmatrix
-class layout_element::dotmatrix_component : public component
-{
-public:
-	// construction/destruction
-	dotmatrix_component(int dots, environment &env, util::xml::data_node const &compnode)
-		: component(env, compnode)
-		, m_dots(dots)
-	{
-	}
-
-protected:
-	// overrides
-	virtual int maxstate() const override { return (1 << m_dots) - 1; }
-
-	virtual void draw_aligned(running_machine &machine, bitmap_argb32 &dest, const rectangle &bounds, int state) override
-	{
-		const rgb_t onpen = rgb_t(0xff, 0xff, 0xff, 0xff);
-		const rgb_t offpen = rgb_t(0xff, 0x20, 0x20, 0x20);
-
-		// sizes for computation
-		int bmheight = 300;
-		int dotwidth = 250;
-
-		// allocate a temporary bitmap for drawing
-		bitmap_argb32 tempbitmap(dotwidth*m_dots, bmheight);
-		tempbitmap.fill(rgb_t(0xff, 0x00, 0x00, 0x00));
-
-		for (int i = 0; i < m_dots; i++)
-			draw_segment_decimal(tempbitmap, ((dotwidth / 2) + (i * dotwidth)), bmheight / 2, dotwidth, BIT(state, i) ? onpen : offpen);
-
-		// resample to the target size
-		render_resample_argb_bitmap_hq(dest, tempbitmap, color(state));
-	}
-
-private:
-	// internal state
-	int m_dots;
-};
-
-
 // simple counter
 class layout_element::simplecounter_component : public component
 {
@@ -3163,6 +3057,8 @@ public:
 		, m_searchpath(env.search_path() ? env.search_path() : "")
 		, m_dirname(env.directory_name() ? env.directory_name() : "")
 	{
+		osd_printf_warning("Warning: layout file contains deprecated reel component\n");
+
 		std::string_view symbollist = env.get_attribute_string(compnode, "symbollist", "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15");
 
 		// split out position names from string and figure out our number of symbols
@@ -3219,7 +3115,7 @@ protected:
 		// shift the reels a bit based on this param, allows fine tuning
 		int use_state = (state + m_stateoffset) % max_state_used;
 
-		// compute premultiplied colors
+		// compute premultiplied color
 		render_color const c(color(state));
 		u32 const r = c.r * 255.0f;
 		u32 const g = c.g * 255.0f;
@@ -3371,7 +3267,7 @@ private:
 		// shift the reels a bit based on this param, allows fine tuning
 		int use_state = (state + m_stateoffset) % max_state_used;
 
-		// compute premultiplied colors
+		// compute premultiplied color
 		render_color const c(color(state));
 		u32 const r = c.r * 255.0f;
 		u32 const g = c.g * 255.0f;
@@ -3555,18 +3451,6 @@ template <typename T>
 layout_element::component::ptr layout_element::make_component(environment &env, util::xml::data_node const &compnode)
 {
 	return std::make_unique<T>(env, compnode);
-}
-
-
-//-------------------------------------------------
-//  make_component - create dotmatrix component
-//  with given vertical resolution
-//-------------------------------------------------
-
-template <int D>
-layout_element::component::ptr layout_element::make_dotmatrix_component(environment &env, util::xml::data_node const &compnode)
-{
-	return std::make_unique<dotmatrix_component>(D, env, compnode);
 }
 
 
@@ -3801,7 +3685,7 @@ void layout_element::component::draw_text(
 		int align,
 		const render_color &color)
 {
-	// compute premultiplied colors
+	// compute premultiplied color
 	u32 const r(color.r * 255.0f);
 	u32 const g(color.g * 255.0f);
 	u32 const b(color.b * 255.0f);

@@ -61,7 +61,7 @@ void upd800468_timer_device::control_w(u8 data)
 
 void upd800468_timer_device::device_start()
 {
-	m_timer = timer_alloc(0);
+	m_timer = timer_alloc(FUNC(upd800468_timer_device::irq_timer_tick), this);
 
 	m_irq_cb.resolve_safe();
 
@@ -74,7 +74,7 @@ void upd800468_timer_device::device_reset()
 	m_rate = m_control = 0;
 }
 
-void upd800468_timer_device::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+TIMER_CALLBACK_MEMBER(upd800468_timer_device::irq_timer_tick)
 {
 	if (BIT(m_control, 0))
 		m_irq_cb(1);
@@ -212,7 +212,7 @@ u8 upd800468_device::port_ddr_r(offs_t num)
 void upd800468_device::port_ddr_w(offs_t num, u8 data)
 {
 	m_port_ddr[num] = data;
-//	logerror("port %u ddr_w: %02x\n", num, data);
+//  logerror("port %u ddr_w: %02x\n", num, data);
 	port_update(num);
 }
 
@@ -232,7 +232,7 @@ void upd800468_device::port_w(offs_t num, u8 data)
 
 void upd800468_device::port_update(offs_t num)
 {
-//	logerror("port %u out: %02x\n", num, m_port_data[num] & m_port_ddr[num]);
+//  logerror("port %u out: %02x\n", num, m_port_data[num] & m_port_ddr[num]);
 	m_out_cb[num](m_port_data[num] & m_port_ddr[num]);
 }
 

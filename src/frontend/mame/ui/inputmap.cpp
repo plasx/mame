@@ -26,6 +26,7 @@ namespace ui {
 
 menu_input_groups::menu_input_groups(mame_ui_manager &mui, render_container &container) : menu(mui, container)
 {
+	set_heading(_("Input Assignments (general)"));
 }
 
 menu_input_groups::~menu_input_groups()
@@ -49,7 +50,13 @@ void menu_input_groups::handle(event const *ev)
 {
 	// process the menu
 	if (ev && (ev->iptkey == IPT_UI_SELECT))
-		menu::stack_push<menu_input_general>(ui(), container(), int(uintptr_t(ev->itemref) - 1));
+	{
+		menu::stack_push<menu_input_general>(
+				ui(),
+				container(),
+				int(uintptr_t(ev->itemref) - 1),
+				util::string_format(_("Input Assignments (%1$s)"), ev->item->text()));
+	}
 }
 
 
@@ -58,14 +65,21 @@ void menu_input_groups::handle(event const *ev)
     input menu
 -------------------------------------------------*/
 
-menu_input_general::menu_input_general(mame_ui_manager &mui, render_container &container, int _group)
+menu_input_general::menu_input_general(mame_ui_manager &mui, render_container &container, int _group, std::string &&heading)
 	: menu_input(mui, container)
 	, group(_group)
 {
+	set_heading(std::move(heading));
 }
 
 menu_input_general::~menu_input_general()
 {
+}
+
+void menu_input_general::menu_activated()
+{
+	// scripts can change settings out from under us
+	reset(reset_options::REMEMBER_POSITION);
 }
 
 void menu_input_general::populate(float &customtop, float &custombottom)
@@ -78,26 +92,30 @@ void menu_input_general::populate(float &customtop, float &custombottom)
 		for (const input_type_entry &entry : machine().ioport().types())
 		{
 			// add if we match the group and we have a valid name
-			if ((entry.group() == group) && entry.name() && entry.name()[0])
+			if (entry.group() == group)
 			{
-				// loop over all sequence types
-				for (input_seq_type seqtype = SEQ_TYPE_STANDARD; seqtype < SEQ_TYPE_TOTAL; ++seqtype)
+				std::string name = entry.name();
+				if (!name.empty())
 				{
-					// build an entry for the standard sequence
-					input_item_data &item(data.emplace_back());
-					item.ref = &entry;
-					item.seqtype = seqtype;
-					item.seq = machine().ioport().type_seq(entry.type(), entry.player(), seqtype);
-					item.defseq = &entry.defseq(seqtype);
-					item.group = entry.group();
-					item.type = ioport_manager::type_is_analog(entry.type()) ? (INPUT_TYPE_ANALOG + seqtype) : INPUT_TYPE_DIGITAL;
-					item.is_optional = false;
-					item.name = _("input-name", entry.name());
-					item.owner = nullptr;
+					// loop over all sequence types
+					for (input_seq_type seqtype = SEQ_TYPE_STANDARD; seqtype < SEQ_TYPE_TOTAL; ++seqtype)
+					{
+						// build an entry for the standard sequence
+						input_item_data &item(data.emplace_back());
+						item.ref = &entry;
+						item.seqtype = seqtype;
+						item.seq = machine().ioport().type_seq(entry.type(), entry.player(), seqtype);
+						item.defseq = &entry.defseq(seqtype);
+						item.group = entry.group();
+						item.type = ioport_manager::type_is_analog(entry.type()) ? (INPUT_TYPE_ANALOG + seqtype) : INPUT_TYPE_DIGITAL;
+						item.is_optional = false;
+						item.name = name;
+						item.owner = nullptr;
 
-					// stop after one, unless we're analog
-					if (item.type == INPUT_TYPE_DIGITAL)
-						break;
+						// stop after one, unless we're analog
+						if (item.type == INPUT_TYPE_DIGITAL)
+							break;
+					}
 				}
 			}
 		}
@@ -131,10 +149,19 @@ void menu_input_general::update_input(input_item_data &seqchangeditem)
 
 menu_input_specific::menu_input_specific(mame_ui_manager &mui, render_container &container) : menu_input(mui, container)
 {
+	set_heading(_("Input Assignments (this system)"));
 }
 
 menu_input_specific::~menu_input_specific()
 {
+}
+
+void menu_input_specific::menu_activated()
+{
+	// scripts can change settings out from under us
+	assert(!pollingitem);
+	data.clear();
+	reset(reset_options::REMEMBER_POSITION);
 }
 
 void menu_input_specific::populate(float &customtop, float &custombottom)
@@ -165,7 +192,7 @@ void menu_input_specific::populate(float &customtop, float &custombottom)
 						item.group = machine().ioport().type_group(field.type(), field.player());
 						item.type = field.is_analog() ? (INPUT_TYPE_ANALOG + seqtype) : INPUT_TYPE_DIGITAL;
 						item.is_optional = field.optional();
-						item.name = _("input-name", field.name());
+						item.name = field.name();
 						item.owner = &field.device();
 
 						// stop after one, unless we're analog
@@ -203,7 +230,7 @@ void menu_input_specific::populate(float &customtop, float &custombottom)
 						return true;
 					if (!codes2.empty() && (codes1.empty() || codes1[0] > codes2[0]))
 						return false;
-					cmp = strcmp(i1.name, i2.name);
+					cmp = i1.name.compare(i2.name);
 					if (cmp < 0)
 						return true;
 					if (cmp > 0)
@@ -224,7 +251,7 @@ void menu_input_specific::populate(float &customtop, float &custombottom)
 	if (!data.empty())
 		populate_sorted(customtop, custombottom);
 	else
-		item_append(_("This machine has no configurable inputs."), FLAG_DISABLE, nullptr);
+		item_append(_("[no assignable inputs are enabled]"), FLAG_DISABLE, nullptr);
 
 	item_append(menu_item_type::SEPARATOR);
 }
@@ -268,12 +295,6 @@ menu_input::menu_input(mame_ui_manager &mui, render_container &container)
 
 menu_input::~menu_input()
 {
-}
-
-void menu_input::menu_activated()
-{
-	// scripts can change settings out from under us
-	reset(reset_options::REMEMBER_POSITION);
 }
 
 
@@ -394,7 +415,7 @@ void menu_input::handle(event const *ev)
 			{
 				// entered invalid sequence - abandon change
 				invalidate = true;
-				errormsg = _("Invalid sequence entered");
+				errormsg = _("Invalid combination entered");
 				erroritem = item;
 			}
 			seq_poll.reset();

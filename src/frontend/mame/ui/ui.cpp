@@ -33,11 +33,13 @@
 #include "emuopts.h"
 #include "mameopts.h"
 #include "drivenum.h"
+#include "fileio.h"
 #include "natkeyboard.h"
 #include "render.h"
 #include "cheat.h"
 #include "rendfont.h"
 #include "romload.h"
+#include "screen.h"
 #include "uiinput.h"
 
 #include "../osd/modules/lib/osdobj_common.h"
@@ -181,6 +183,7 @@ mame_ui_manager::mame_ui_manager(running_machine &machine)
 	, m_target_font_height(0)
 	, m_has_warnings(false)
 	, m_unthrottle_mute(false)
+	, m_image_display_enabled(true)
 	, m_machine_info()
 	, m_unemulated_features()
 	, m_imperfect_features()
@@ -200,8 +203,6 @@ void mame_ui_manager::init()
 	ui::system_list::instance().cache_data(options());
 
 	// initialize the other UI bits
-	ui_gfx_init(machine());
-
 	m_ui_colors.refresh(options());
 
 	// update font row info from setting
@@ -351,7 +352,7 @@ void mame_ui_manager::initialize(running_machine &machine)
 		const char *const service_mode_dipname = ioport_configurer::string_from_token(DEF_STR(Service_Mode));
 		for (auto &port : machine.ioport().ports())
 			for (ioport_field &field : port.second->fields())
-				if (field.type() == IPT_DIPSWITCH && strcmp(field.name(), service_mode_dipname) == 0)
+				if ((field.type() == IPT_DIPSWITCH) && (field.name() == service_mode_dipname)) // FIXME: probably breaks with localisation, also issues with multiple devices
 					field.set_defseq(machine.ioport().type_seq(IPT_SERVICE));
 	}
 
@@ -551,7 +552,7 @@ void mame_ui_manager::display_startup_screens(bool first_time)
 			if (!mandatory_images.empty() && show_mandatory_fileman)
 			{
 				std::ostringstream warning;
-				warning << _("This driver requires images to be loaded in the following device(s): ");
+				warning << _("This system requires media images to be mounted for the following device(s): ");
 
 				output_joined_collection(mandatory_images,
 						[&warning](const std::reference_wrapper<const std::string> &img)    { warning << "\"" << img.get() << "\""; },
@@ -1180,7 +1181,7 @@ void mame_ui_manager::start_load_state()
 void mame_ui_manager::image_handler_ingame()
 {
 	// run display routine for devices
-	if (machine().phase() == machine_phase::RUNNING)
+	if (m_image_display_enabled && machine().phase() == machine_phase::RUNNING)
 	{
 		auto layout = create_layout(machine().render().ui_container());
 
@@ -2170,7 +2171,7 @@ void mame_ui_manager::save_main_option()
 			return;
 		}
 	}
-	popup_time(3, "%s", _("\n    Configuration saved    \n\n"));
+	popup_time(3, "%s", _("\n    Settings saved    \n\n"));
 }
 
 void mame_ui_manager::menu_reset()

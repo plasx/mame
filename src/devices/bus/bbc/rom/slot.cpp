@@ -50,7 +50,7 @@ void device_bbc_rom_interface::rom_alloc(uint32_t size, const char *tag)
 {
 	if (m_rom == nullptr)
 	{
-		m_rom = device().machine().memory().region_alloc(std::string(tag).append(BBC_ROM_REGION_TAG).c_str(), size, 1, ENDIANNESS_LITTLE)->base();
+		m_rom = device().machine().memory().region_alloc(std::string(tag).append(BBC_ROM_REGION_TAG), size, 1, ENDIANNESS_LITTLE)->base();
 		m_rom_size = size;
 	}
 }
@@ -84,7 +84,7 @@ void device_bbc_rom_interface::nvram_alloc(uint32_t size)
 //-------------------------------------------------
 bbc_romslot_device::bbc_romslot_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock)
 	: device_t(mconfig, type, tag, owner, clock)
-	, device_image_interface(mconfig, *this)
+	, device_rom_image_interface(mconfig, *this)
 	, device_single_card_slot_interface<device_bbc_rom_interface>(mconfig, *this)
 	, m_cart(nullptr)
 {

@@ -82,7 +82,7 @@ function commonui.input_selection_menu(action, title, filter)
 		local selection = index_first_choice
 		for index, field in ipairs(choices) do
 			if field then
-				table.insert(items, { _p('input-name', field.name), '', '' })
+				table.insert(items, { field.name, '', '' })
 				if initial_selection and (field.port.tag == initial_selection.port.tag) and (field.mask == initial_selection.mask) and (field.type == initial_selection.type) then
 					selection = #items
 					initial_selection = nil
@@ -194,13 +194,13 @@ function commonui.switch_polling_helper(starting_sequence)
 				return true
 			else
 				-- invalid sequence entered
-				machine:popmessage(_p('plugin-commonui', 'Invalid sequence entered'))
+				machine:popmessage(_p('plugin-commonui', 'Invalid combination entered'))
 				self.sequence = nil
 				return true
 			end
 		else
 			machine:popmessage(string.format(
-					_p('plugin-commonui', 'Enter sequence or press %s to cancel\n%s'),
+					_p('plugin-commonui', 'Enter combination or press %s to cancel\n%s'),
 					cancel_prompt,
 					input:seq_name(poller.sequence)))
 			return false

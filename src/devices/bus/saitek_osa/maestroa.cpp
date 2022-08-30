@@ -17,9 +17,6 @@ Hardware notes:
 The CPU is a 4MHz part, higher speed modules overclock it. The PCB is not
 compatible for upgrading to newer Maestro versions.
 
-TODO:
-- does not work if cpu speed is 4MHz
-
 ***************************************************************************/
 
 #include "emu.h"
@@ -29,7 +26,7 @@ TODO:
 #include "bus/generic/carts.h"
 #include "cpu/m6502/r65c02.h"
 
-#include "softlist.h"
+#include "softlist_dev.h"
 
 
 DEFINE_DEVICE_TYPE(OSA_MAESTROA, saitekosa_maestroa_device, "osa_maestroa", "Maestro A")

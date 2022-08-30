@@ -448,6 +448,8 @@ void fm_operator<RegisterType>::clock(uint32_t env_counter, int32_t lfo_raw_pm)
 	// clock the SSG-EG state (OPN/OPNA)
 	if (m_regs.op_ssg_eg_enable(m_opoffs))
 		clock_ssg_eg_state();
+	else
+		m_ssg_inverted = false;
 
 	// clock the envelope if on an envelope cycle; env_counter is a x.2 value
 	if (bitfield(env_counter, 0, 2) == 0)
@@ -881,6 +883,23 @@ void fm_channel<RegisterType>::clock(uint32_t env_counter, int32_t lfo_raw_pm)
 	for (uint32_t opnum = 0; opnum < array_size(m_op); opnum++)
 		if (m_op[opnum] != nullptr)
 			m_op[opnum]->clock(env_counter, lfo_raw_pm);
+
+/*
+useful temporary code for envelope debugging
+if (m_choffs == 0x101)
+{
+	for (uint32_t opnum = 0; opnum < array_size(m_op); opnum++)
+	{
+		auto &op = *m_op[((opnum & 1) << 1) | ((opnum >> 1) & 1)];
+		printf(" %c%03X%c%c ",
+			"PADSRV"[op.debug_eg_state()],
+			op.debug_eg_attenuation(),
+			op.debug_ssg_inverted() ? '-' : '+',
+			m_regs.op_ssg_eg_enable(op.opoffs()) ? '0' + m_regs.op_ssg_eg_mode(op.opoffs()) : ' ');
+	}
+printf(" -- ");
+}
+*/
 }
 
 
@@ -928,7 +947,8 @@ void fm_channel<RegisterType>::output_2op(output_data &output, uint32_t rshift, 
 	}
 	else
 	{
-		result = op1value + (m_op[1]->compute_volume(m_op[1]->phase(), am_offset) >> rshift);
+		result = (RegisterType::MODULATOR_DELAY ? m_feedback[1] : op1value) >> rshift;
+		result += m_op[1]->compute_volume(m_op[1]->phase(), am_offset) >> rshift;
 		int32_t clipmin = -clipmax - 1;
 		result = clamp(result, clipmin, clipmax);
 	}
@@ -1227,6 +1247,7 @@ void fm_engine_base<RegisterType>::save_restore(ymfm_saved_state &state)
 	state.save_restore(m_irq_state);
 	state.save_restore(m_timer_running[0]);
 	state.save_restore(m_timer_running[1]);
+	state.save_restore(m_total_clocks);
 
 	// save the register/family data
 	m_regs.save_restore(state);
@@ -1252,6 +1273,9 @@ void fm_engine_base<RegisterType>::save_restore(ymfm_saved_state &state)
 template<class RegisterType>
 uint32_t fm_engine_base<RegisterType>::clock(uint32_t chanmask)
 {
+	// update the clock counter
+	m_total_clocks++;
+
 	// if something was modified, prepare
 	// also prepare every 4k samples to catch ending notes
 	if (m_modified_channels != 0 || m_prepare_count++ >= 4096)
@@ -1428,13 +1452,16 @@ void fm_engine_base<RegisterType>::assign_operators()
 //-------------------------------------------------
 
 template<class RegisterType>
-void fm_engine_base<RegisterType>::update_timer(uint32_t tnum, uint32_t enable)
+void fm_engine_base<RegisterType>::update_timer(uint32_t tnum, uint32_t enable, int32_t delta_clocks)
 {
 	// if the timer is live, but not currently enabled, set the timer
 	if (enable && !m_timer_running[tnum])
 	{
 		// period comes from the registers, and is different for each
 		uint32_t period = (tnum == 0) ? (1024 - m_regs.timer_a_value()) : 16 * (256 - m_regs.timer_b_value());
+
+		// caller can also specify a delta to account for other effects
+		period += delta_clocks;
 
 		// reset it
 		m_intf.ymfm_set_timer(tnum, period * OPERATORS * m_clock_prescale);
@@ -1468,11 +1495,14 @@ void fm_engine_base<RegisterType>::engine_timer_expired(uint32_t tnum)
 	if (tnum == 0 && m_regs.csm())
 		for (uint32_t chnum = 0; chnum < CHANNELS; chnum++)
 			if (bitfield(RegisterType::CSM_TRIGGER_MASK, chnum))
+			{
 				m_channel[chnum]->keyonoff(1, KEYON_CSM, chnum);
+				m_modified_channels |= 1 << chnum;
+			}
 
 	// reset
 	m_timer_running[tnum] = false;
-	update_timer(tnum, 1);
+	update_timer(tnum, 1, 0);
 }
 
 
@@ -1530,9 +1560,11 @@ void fm_engine_base<RegisterType>::engine_mode_write(uint8_t data)
 			reset_mask |= RegisterType::STATUS_TIMERA;
 		set_reset_status(0, reset_mask);
 
-		// load timers
-		update_timer(1, m_regs.load_timer_b());
-		update_timer(0, m_regs.load_timer_a());
+		// load timers; note that timer B gets a small negative adjustment because
+		// the *16 multiplier is free-running, so the first tick of the clock
+		// is a bit shorter
+		update_timer(1, m_regs.load_timer_b(), -(m_total_clocks & 15));
+		update_timer(0, m_regs.load_timer_a(), 0);
 	}
 }
 

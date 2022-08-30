@@ -198,6 +198,8 @@ CRUCLK*  51||52  DBIN
 #include "forti.h"
 #include "pgram.h"
 #include "sidmaster.h"
+#include "scsicard.h"
+#include "tipi.h"
 
 #define LOG_WARN        (1U<<1)   // Warnings
 #define LOG_CONFIG      (1U<<2)   // Configuration
@@ -501,6 +503,8 @@ void ti99_peribox_slot_standard(device_slot_interface &device)
 	device.option_add("ddcc1",    TI99_DDCC1);
 	device.option_add("forti",    TI99_FORTI);
 	device.option_add("sidmaster", TI99_SIDMASTER);
+	device.option_add("whtscsi",  TI99_WHTSCSI);
+	device.option_add("tipi",     TI99_TIPI);
 }
 
 void peribox_device::device_add_mconfig(machine_config &config)
@@ -546,6 +550,8 @@ void ti99_peribox_slot_evpc(device_slot_interface &device)
 	device.option_add("ddcc1",    TI99_DDCC1);
 	device.option_add("forti",    TI99_FORTI);
 	device.option_add("sidmaster", TI99_SIDMASTER);
+	device.option_add("whtscsi",  TI99_WHTSCSI);
+	device.option_add("tipi",     TI99_TIPI);
 }
 
 void peribox_ev_device::device_add_mconfig(machine_config &config)
@@ -602,6 +608,8 @@ void ti99_peribox_slot_geneve(device_slot_interface &device)
 	device.option_add("ddcc1",    TI99_DDCC1);
 	device.option_add("forti",    TI99_FORTI);
 	device.option_add("sidmaster", TI99_SIDMASTER);
+	device.option_add("whtscsi",  TI99_WHTSCSI);
+	device.option_add("tipi",     TI99_TIPI);
 }
 
 void peribox_gen_device::device_add_mconfig(machine_config &config)
@@ -658,6 +666,8 @@ void ti99_peribox_slot_sgcpu(device_slot_interface &device)
 	device.option_add("ddcc1",    TI99_DDCC1);
 	device.option_add("forti",    TI99_FORTI);
 	device.option_add("sidmaster", TI99_SIDMASTER);
+	device.option_add("whtscsi",  TI99_WHTSCSI);
+	device.option_add("tipi",     TI99_TIPI);
 }
 
 void peribox_sg_device::device_add_mconfig(machine_config &config)
@@ -786,18 +796,18 @@ void device_ti99_peribox_card_interface::interface_config_complete()
 
 bool device_ti99_peribox_card_interface::in_dsr_space(offs_t offset, bool amadec)
 {
-	if (amadec)
-		return (offset & 0x7e000)==0x74000;
-	else
-		return (offset & 0x0e000)==0x04000;
+	if (amadec && !amabc_is_set(offset)) return false;
+	return (offset & 0x0e000)==0x04000;
 }
 
-bool device_ti99_peribox_card_interface::in_cart_space(offs_t offset, bool amadec)
+/*
+    Some cards do not decode the additional address lines AMA, AMB, AMC.
+    This leads to errors when using the card with Genmod. The typical procedure
+    to decode the lines is the same for each card.
+*/
+bool device_ti99_peribox_card_interface::amabc_is_set(offs_t offset)
 {
-	if (amadec)
-		return (offset & 0x7e000)==0x76000;
-	else
-		return (offset & 0x0e000)==0x06000;
+	return (((offset >> 16)&0x07)==0x07);
 }
 
 } // end namespace bus::ti99::peb
