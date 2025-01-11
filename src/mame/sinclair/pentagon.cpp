@@ -27,9 +27,9 @@ public:
 	void pentagon(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 	virtual void pentagon_update_memory();
 
 	required_device<beta_disk_device> m_beta;
@@ -43,9 +43,9 @@ private:
 	INTERRUPT_GEN_MEMBER(pentagon_interrupt);
 	void port_7ffd_w(offs_t offset, u8 data);
 
-	void pentagon_io(address_map &map);
-	void pentagon_mem(address_map &map);
-	void pentagon_switch(address_map &map);
+	void pentagon_io(address_map &map) ATTR_COLD;
+	void pentagon_mem(address_map &map) ATTR_COLD;
+	void pentagon_switch(address_map &map) ATTR_COLD;
 
 	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::specific m_program;
 };
@@ -60,8 +60,8 @@ public:
 	void pent1024(machine_config &config);
 
 protected:
-	void machine_start() override;
-	void machine_reset() override;
+	void machine_start() override ATTR_COLD;
+	void machine_reset() override ATTR_COLD;
 	void pentagon_update_memory() override;
 };
 
@@ -101,8 +101,10 @@ u8 pentagon_state::beta_neutral_r(offs_t offset)
 
 u8 pentagon_state::beta_enable_r(offs_t offset)
 {
-	if (!(machine().side_effects_disabled())) {
-		if (m_bank_rom[0]->entry() == 1) {
+	if (!machine().side_effects_disabled())
+	{
+		if (m_bank_rom[0]->entry() == 1)
+		{
 			m_beta->enable();
 			m_bank_rom[0]->set_entry(3);
 		}
@@ -112,8 +114,10 @@ u8 pentagon_state::beta_enable_r(offs_t offset)
 
 u8 pentagon_state::beta_disable_r(offs_t offset)
 {
-	if (!(machine().side_effects_disabled())) {
-		if (m_beta->is_active()) {
+	if (!machine().side_effects_disabled())
+	{
+		if (m_beta->is_active())
+		{
 			m_beta->disable();
 			m_bank_rom[0]->set_entry(BIT(m_port_7ffd_data, 4));
 		}

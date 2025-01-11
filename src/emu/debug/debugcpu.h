@@ -51,10 +51,11 @@ public:
 	// hooks used by the rest of the system
 	void start_hook(const attotime &endtime);
 	void stop_hook();
-	void interrupt_hook(int irqline);
+	void interrupt_hook(int irqline, offs_t pc);
 	void exception_hook(int exception);
 	void privilege_hook();
 	void instruction_hook(offs_t curpc);
+	void wait_hook();
 
 	// debugger focus
 	void ignore(bool ignore = true);
@@ -165,7 +166,7 @@ public:
 	void compute_debug_flags();
 
 private:
-	void halt_on_next_instruction_impl(util::format_argument_pack<std::ostream> &&args);
+	void halt_on_next_instruction_impl(util::format_argument_pack<char> &&args);
 
 	// internal helpers
 	void prepare_for_step_overout(offs_t pc);
@@ -174,6 +175,7 @@ private:
 	// breakpoint and watchpoint helpers
 	void breakpoint_update_flags();
 	void breakpoint_check(offs_t pc);
+	void registerpoint_check();
 	void reinstall_all(read_or_write mode);
 	void reinstall(address_space &space, read_or_write mode);
 	void write_tracking(address_space &space, offs_t address, u64 data);
@@ -204,6 +206,7 @@ private:
 	attotime                m_endexectime;              // ending time of the current execution
 	u64                     m_total_cycles;             // current total cycles
 	u64                     m_last_total_cycles;        // last total cycles
+	bool                    m_was_waiting;              // true if no instruction executed since last wait
 
 	// history
 	offs_t                  m_pc_history[HISTORY_SIZE]; // history of recent PCs
@@ -227,7 +230,8 @@ private:
 		~tracer();
 
 		void update(offs_t pc);
-		void vprintf(util::format_argument_pack<std::ostream> const &args);
+		void interrupt_update(int irqline, offs_t pc);
+		void vprintf(util::format_argument_pack<char> const &args);
 		void flush();
 		bool logerror() const { return m_logerror; }
 
@@ -327,7 +331,8 @@ private:
 	static constexpr u32 DEBUG_FLAG_STOP_VBLANK     = 0x00001000;       // there is a pending stop on the next VBLANK
 	static constexpr u32 DEBUG_FLAG_STOP_TIME       = 0x00002000;       // there is a pending stop at cpu->stoptime
 	static constexpr u32 DEBUG_FLAG_SUSPENDED       = 0x00004000;       // CPU currently suspended
-	static constexpr u32 DEBUG_FLAG_LIVE_BP         = 0x00010000;       // there are live breakpoints for this CPU
+	static constexpr u32 DEBUG_FLAG_LIVE_BP         = 0x00008000;       // there are live breakpoints for this CPU
+	static constexpr u32 DEBUG_FLAG_LIVE_RP         = 0x00010000;       // there are live registerpoints for this CPU
 	static constexpr u32 DEBUG_FLAG_STOP_PRIVILEGE  = 0x00020000;       // run until execution level changes
 	static constexpr u32 DEBUG_FLAG_STEPPING_BRANCH_TRUE  = 0x0040000;  // run until true branch
 	static constexpr u32 DEBUG_FLAG_STEPPING_BRANCH_FALSE = 0x0080000;  // run until false branch
@@ -405,9 +410,10 @@ public:
 	void stop_hook(device_t *device);
 	void go_next_device(device_t *device);
 	void go_vblank();
-	void halt_on_next_instruction(device_t *device, util::format_argument_pack<std::ostream> &&args);
+	void halt_on_next_instruction(device_t *device, util::format_argument_pack<char> &&args);
 	void ensure_comments_loaded();
 	void reset_transient_flags();
+	void wait_for_debugger(device_t &device);
 
 private:
 	static const size_t NUM_TEMP_VARIABLES;

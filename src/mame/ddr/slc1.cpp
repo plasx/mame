@@ -1,6 +1,6 @@
 // license:BSD-3-Clause
 // copyright-holders:Robbbert, hap
-/***************************************************************************
+/*******************************************************************************
 
 2011-JUL-16 SLC1 skeleton driver [Robbbert]
 2011-DEC-29 Working [Robbbert]
@@ -25,7 +25,7 @@ This computer is both a Z80 trainer, and a chess computer. The keyboard
 
 Hardware:
     4 Kbytes ROM in the address range 0000-0FFF
-    1 Kbyte RAM in the address range 5000-53ff (user area starts at 5100)
+    1 Kbyte RAM in the address range 5000-53FF (user area starts at 5100)
     6-digit 7-segment display
     Busy LED
     Keyboard with 12 keys
@@ -53,12 +53,12 @@ TODO:
     - The handwritten schematics and prototype by Dr.Scheuschner show 4 extra
       keys (R, MEM, N, Y) and 8 7segs, but they aren't in the final version.
 
-***************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
 #include "cpu/z80/z80.h"
-#include "sound/spkrdev.h"
+#include "sound/dac.h"
 #include "video/pwm.h"
 
 #include "speaker.h"
@@ -75,7 +75,7 @@ public:
 	slc1_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag)
 		, m_maincpu(*this, "maincpu")
-		, m_speaker(*this, "speaker")
+		, m_dac(*this, "dac")
 		, m_inputs(*this, "IN.%u", 0U)
 		, m_display(*this, "display")
 		, m_busyled(*this, "busy_led")
@@ -86,23 +86,23 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(trigger_reset);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
-	required_device<speaker_sound_device> m_speaker;
+	required_device<dac_1bit_device> m_dac;
 	required_ioport_array<3> m_inputs;
 	required_device<pwm_display_device> m_display;
 	output_finder<> m_busyled;
 
-	void mem_map(address_map &map);
-	void io_map(address_map &map);
+	u8 m_select = 0;
+	u8 m_segment = 0;
+
+	void mem_map(address_map &map) ATTR_COLD;
+	void io_map(address_map &map) ATTR_COLD;
 
 	u8 input_r();
 	void control_w(offs_t offset, u8 data);
-
-	u8 m_select = 0;
-	u8 m_segment = 0;
 };
 
 void slc1_state::machine_start()
@@ -115,9 +115,9 @@ void slc1_state::machine_start()
 
 
 
-/***************************************************************************
+/*******************************************************************************
     I/O
-***************************************************************************/
+*******************************************************************************/
 
 void slc1_state::control_w(offs_t offset, u8 data)
 {
@@ -128,7 +128,7 @@ void slc1_state::control_w(offs_t offset, u8 data)
 	// 7442 0-1,3-6: digit select
 	// 7442 3-5: keypad select
 	// 7442 9: speaker out
-	m_speaker->level_w(BIT(sel, 9));
+	m_dac->write(BIT(sel, 9));
 
 	// a0-a2+d7: digit segment data
 	u8 mask = 1 << (offset & 7);
@@ -152,9 +152,9 @@ u8 slc1_state::input_r()
 
 
 
-/***************************************************************************
+/*******************************************************************************
     Address Maps
-***************************************************************************/
+*******************************************************************************/
 
 void slc1_state::mem_map(address_map &map)
 {
@@ -171,9 +171,9 @@ void slc1_state::io_map(address_map &map)
 
 
 
-/**************************************************************************
+/******************************************************************************
     Input Ports
-***************************************************************************/
+*******************************************************************************/
 
 INPUT_CHANGED_MEMBER(slc1_state::trigger_reset)
 {
@@ -200,37 +200,37 @@ static INPUT_PORTS_START( slc1 )
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z / ADR / BP") PORT_CODE(KEYCODE_Z) PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_ENTER_PAD) PORT_CHAR('Z')
 
 	PORT_START("RESET")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Reset") PORT_CODE(KEYCODE_F1) PORT_CHANGED_MEMBER(DEVICE_SELF, slc1_state, trigger_reset, 0)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Reset") PORT_CODE(KEYCODE_F1) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(slc1_state::trigger_reset), 0)
 INPUT_PORTS_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
     Machine Config
-***************************************************************************/
+*******************************************************************************/
 
 void slc1_state::slc1(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	Z80(config, m_maincpu, 2500000);
 	m_maincpu->set_addrmap(AS_PROGRAM, &slc1_state::mem_map);
 	m_maincpu->set_addrmap(AS_IO, &slc1_state::io_map);
 
-	/* video hardware */
+	// video hardware
 	PWM_DISPLAY(config, m_display).set_size(7, 8);
 	m_display->set_segmask(0x7b, 0xff);
 	config.set_default_layout(layout_slc1);
 
-	/* sound hardware */
-	SPEAKER(config, "mono").front_center();
-	SPEAKER_SOUND(config, m_speaker).add_route(ALL_OUTPUTS, "mono", 0.25);
+	// sound hardware
+	SPEAKER(config, "speaker").front_center();
+	DAC_1BIT(config, m_dac).add_route(ALL_OUTPUTS, "speaker", 0.25);
 }
 
 
 
-/***************************************************************************
+/*******************************************************************************
     ROM Definitions
-***************************************************************************/
+*******************************************************************************/
 
 ROM_START(slc1)
 	ROM_REGION(0x1000, "maincpu", 0 )
@@ -244,9 +244,9 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
     Drivers
-***************************************************************************/
+*******************************************************************************/
 
-/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  CLASS       INIT        COMPANY               FULLNAME */
-COMP( 1989, slc1, 0,      0,      slc1,    slc1,  slc1_state, empty_init, "Dieter Scheuschner", "Schach- und Lerncomputer SLC 1", MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  CLASS       INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1989, slc1, 0,      0,      slc1,    slc1,  slc1_state, empty_init, "Dieter Scheuschner", "Schach- und Lerncomputer SLC 1", MACHINE_SUPPORTS_SAVE )

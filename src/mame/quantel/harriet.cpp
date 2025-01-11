@@ -8,7 +8,7 @@
 
 #include "emu.h"
 #include "bus/rs232/rs232.h"
-#include "cpu/m68000/m68000.h"
+#include "cpu/m68000/m68010.h"
 #include "machine/hd63450.h"
 //#include "machine/imsc012.h"
 #include "machine/mc68681.h"
@@ -17,6 +17,9 @@
 #include "machine/nvram.h"
 #include "machine/timekpr.h"
 #include "machine/wd33c9x.h"
+
+
+namespace {
 
 class harriet_state : public driver_device
 {
@@ -33,10 +36,10 @@ private:
 	uint8_t zpram_r(offs_t offset);
 	void zpram_w(offs_t offset, uint8_t data);
 
-	void harriet_map(address_map &map);
+	void harriet_map(address_map &map) ATTR_COLD;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	std::unique_ptr<u8[]> m_zpram_data;
@@ -130,4 +133,7 @@ ROM_START( harriet )
 	ROM_LOAD16_BYTE("harriet 36-74c.tdb v5.01 hibyte 2a0c.bin", 0x0000, 0x4000, CRC(a61f441d) SHA1(76af6eddd5c042f1b2eef590eb822379944b9b28))
 ROM_END
 
-COMP( 1990, harriet, 0, 0, harriet, harriet, harriet_state, empty_init, "Quantel", "Harriet", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+COMP( 1990, harriet, 0, 0, harriet, harriet, harriet_state, empty_init, "Quantel", "Harriet", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

@@ -10,6 +10,7 @@
 #include "emuopts.h"
 
 #include "corestr.h"
+#include "path.h"
 #include "zippath.h"
 
 
@@ -27,7 +28,7 @@ device_slot_interface::~device_slot_interface()
 }
 
 
-device_slot_interface::slot_option::slot_option(const char *name, const device_type &devtype, bool selectable) :
+device_slot_interface::slot_option::slot_option(const char *name, device_type devtype, bool selectable) :
 	m_name(name),
 	m_devtype(devtype),
 	m_selectable(selectable),
@@ -46,7 +47,7 @@ void device_slot_interface::interface_validity_check(validity_checker &valid) co
 }
 
 
-device_slot_interface::slot_option &device_slot_interface::option_add(const char *name, const device_type &devtype)
+device_slot_interface::slot_option &device_slot_interface::option_add(const char *name, device_type devtype)
 {
 	if (!name || !*name)
 		throw emu_fatalerror("slot '%s' attempt to add option without name\n", device().tag());
@@ -59,7 +60,7 @@ device_slot_interface::slot_option &device_slot_interface::option_add(const char
 }
 
 
-device_slot_interface::slot_option &device_slot_interface::option_add_internal(const char *name, const device_type &devtype)
+device_slot_interface::slot_option &device_slot_interface::option_add_internal(const char *name, device_type devtype)
 {
 	if (!name || !*name)
 		throw emu_fatalerror("slot '%s' attempt to add option without name\n", device().tag());
@@ -72,7 +73,7 @@ device_slot_interface::slot_option &device_slot_interface::option_add_internal(c
 }
 
 
-device_slot_interface::slot_option &device_slot_interface::option_replace(const char *name, const device_type &devtype)
+device_slot_interface::slot_option &device_slot_interface::option_replace(const char *name, device_type devtype)
 {
 	if (!name || !*name)
 		throw emu_fatalerror("slot '%s' attempt to replace option without name\n", device().tag());
@@ -85,7 +86,7 @@ device_slot_interface::slot_option &device_slot_interface::option_replace(const 
 }
 
 
-device_slot_interface::slot_option &device_slot_interface::option_replace_internal(const char *name, const device_type &devtype)
+device_slot_interface::slot_option &device_slot_interface::option_replace_internal(const char *name, device_type devtype)
 {
 	if (!name || !*name)
 		throw emu_fatalerror("slot '%s' attempt to replace option without name\n", device().tag());

@@ -78,18 +78,17 @@ public:
 		, m_p2_control(*this, "CONTP2")
 	{ }
 
-	DECLARE_CUSTOM_INPUT_MEMBER(ladybug_p1_control_r);
-	DECLARE_CUSTOM_INPUT_MEMBER(ladybug_p2_control_r);
+	ioport_value ladybug_p1_control_r();
+	ioport_value ladybug_p2_control_r();
 	DECLARE_INPUT_CHANGED_MEMBER(coin1_inserted);
 	DECLARE_INPUT_CHANGED_MEMBER(coin2_inserted);
 	void ladybug(machine_config &config);
 
 protected:
-	DECLARE_WRITE_LINE_MEMBER(flipscreen_w);
 	void ladybug_palette(palette_device &palette) const;
 	u32 screen_update_ladybug(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void ladybug_map(address_map &map);
+	void ladybug_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 
@@ -114,7 +113,7 @@ public:
 	void dorodon(machine_config &config);
 
 protected:
-	void decrypted_opcodes_map(address_map &map);
+	void decrypted_opcodes_map(address_map &map) ATTR_COLD;
 
 private:
 	required_shared_ptr<u8> m_decrypted_opcodes;
@@ -214,15 +213,6 @@ void ladybug_state::ladybug_palette(palette_device &palette) const
 	}
 }
 
-WRITE_LINE_MEMBER(ladybug_state::flipscreen_w)
-{
-	if (flip_screen() != state)
-	{
-		flip_screen_set(state);
-		machine().tilemap().mark_all_dirty();
-	}
-}
-
 u32 ladybug_state::screen_update_ladybug(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	bitmap.fill(0, cliprect);
@@ -277,12 +267,12 @@ INPUT_CHANGED_MEMBER(ladybug_state::coin2_inserted)
 		m_maincpu->set_input_line(0, HOLD_LINE);
 }
 
-CUSTOM_INPUT_MEMBER(ladybug_state::ladybug_p1_control_r)
+ioport_value ladybug_state::ladybug_p1_control_r()
 {
 	return m_p1_control->read();
 }
 
-CUSTOM_INPUT_MEMBER(ladybug_state::ladybug_p2_control_r)
+ioport_value ladybug_state::ladybug_p2_control_r()
 {
 	// upright cabinet only uses a single set of controls */
 	return ((m_port_dsw0->read() & 0x20) ? m_p2_control : m_p1_control)->read();
@@ -291,20 +281,20 @@ CUSTOM_INPUT_MEMBER(ladybug_state::ladybug_p2_control_r)
 
 static INPUT_PORTS_START( ladybug )
 	PORT_START("IN0")
-	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(ladybug_state, ladybug_p1_control_r)
+	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(ladybug_state::ladybug_p1_control_r))
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 
 	PORT_START("IN1")
-	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(ladybug_state, ladybug_p2_control_r)
+	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_CUSTOM_MEMBER(FUNC(ladybug_state::ladybug_p2_control_r))
 	// This should be connected to the 4V clock. I don't think the game uses it.
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	// Note that there are TWO VBlank inputs, one is active low, the other active
 	// high. There are probably other differencies in the hardware, but emulating
 	// them this way is enough to get the game running.
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 
 	PORT_START("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -361,8 +351,8 @@ static INPUT_PORTS_START( ladybug )
 	/* settings 0x00 through 0x50 all give 1 Coin/1 Credit */
 
 	PORT_START("COIN")  /* FAKE */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin1_inserted, 0)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin2_inserted, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin1_inserted), 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin2_inserted), 0)
 
 	PORT_START("CONTP1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -401,8 +391,8 @@ static INPUT_PORTS_START( snapjack )
 	/* Note that there are TWO VBlank inputs, one is active low, the other active */
 	/* high. There are probably other differencies in the hardware, but emulating */
 	/* them this way is enough to get the game running. */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 
 	PORT_START("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -461,8 +451,8 @@ static INPUT_PORTS_START( snapjack )
 	/* settings 0x00 through 0x04 all give 1 Coin/1 Credit */
 
 	PORT_START("COIN")  /* FAKE */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin1_inserted, 0)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin2_inserted, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin1_inserted), 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin2_inserted), 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( cavenger )
@@ -487,8 +477,8 @@ static INPUT_PORTS_START( cavenger )
 	/* Note that there are TWO VBlank inputs, one is active low, the other active */
 	/* high. There are probably other differencies in the hardware, but emulating */
 	/* them this way is enough to get the game running. */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 
 	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -545,8 +535,8 @@ static INPUT_PORTS_START( cavenger )
 	/* settings 0x00 through 0x50 all give 1 Coin/1 Credit */
 
 	PORT_START("COIN")  /* FAKE */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin1_inserted, 0)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin2_inserted, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin1_inserted), 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin2_inserted), 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dorodon )
@@ -571,8 +561,8 @@ static INPUT_PORTS_START( dorodon )
 	/* Note that there are TWO VBlank inputs, one is active low, the other active */
 	/* high. There are probably other differencies in the hardware, but emulating */
 	/* them this way is enough to get the game running. */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_VBLANK("screen")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 
 	PORT_START("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -629,8 +619,8 @@ static INPUT_PORTS_START( dorodon )
 	/* settings 0x00 through 0x50 all give 1 Coin/1 Credit */
 
 	PORT_START("COIN")  /* FAKE */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin1_inserted, 0)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, ladybug_state,coin2_inserted, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin1_inserted), 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ladybug_state::coin2_inserted), 0)
 INPUT_PORTS_END
 
 
@@ -703,7 +693,7 @@ void ladybug_state::ladybug(machine_config &config)
 	LADYBUG_VIDEO(config, m_video, 4000000).set_gfxdecode_tag("gfxdecode");
 
 	ls259_device &videolatch(LS259(config, "videolatch")); // L5 on video board or H3 on single board
-	videolatch.q_out_cb<0>().set(FUNC(ladybug_state::flipscreen_w)); // no other outputs used
+	videolatch.q_out_cb<0>().set(FUNC(ladybug_state::flip_screen_set)); // no other outputs used
 
 	/* sound hardware */
 	SPEAKER(config, "mono").front_center();

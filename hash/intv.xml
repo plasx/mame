@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE softwarelist SYSTEM "softwarelist.dtd">
 <!--
-license:CC0
+license:CC0-1.0
 
   Missing Cartridges
 
@@ -11,7 +11,7 @@ license:CC0
 -->
 
 
-<softwarelist name="intv" description="Intellivision cartridges">
+<softwarelist name="intv" description="Mattel Intellivision cartridges">
 
 	<software name="backgamm">
 		<description>ABPA Backgammon</description>

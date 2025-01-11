@@ -1,6 +1,6 @@
 // license:BSD-3-Clause
 // copyright-holders:hap, Sandro Ronco
-/******************************************************************************
+/*******************************************************************************
 
 Tasc ChessSystem
 
@@ -8,12 +8,11 @@ Commonly known as Tasc R30, it's basically a dedicated ChessMachine.
 The King chess engines are also compatible with Tasc's The ChessMachine software
 on PC, however the prototype Gideon 3.1(internally: 2.1, Rebel 2.01) is not.
 
-WARNING: Don't configure more than 512KB RAM for R30 The King 2.50, it will still
-be playable but will actually use less than 512KB RAM and become weaker.
-
 The King 2.23 version was not sold to consumers. It has an opening book meant
 for chesscomputer competitions.
 For more information, see: http://chesseval.com/ChessEvalJournal/R30v223.htm
+
+Gideon only uses 128KB program RAM, no matter the RAM configuration.
 
 R30 hardware notes:
 - ARM6 CPU(P60ARM/CG) @ 30MHz
@@ -30,13 +29,7 @@ R40 hardware notes:
 Documentation for the Toshiba chips is hard to find, but similar chips exist:
 T7778 is equivalent to T6A39, T7900 is equivalent to T6A40.
 
-EPROMs are interchangeable between R30 and R40, with some limitations with
-The King 2.50 (see below).
-
-Regarding RAM: The King 2.2x will work fine with RAM expanded up to 8MB.
-The King 2.50 appears to be protected against RAM upgrades though, and will
-limit itself to 128KB if it detects a non-default amount of RAM. Gideon doesn't
-use RAM above 128KB either, perhaps the R30 prototype only had 128KB RAM.
+EPROMs are interchangeable between R30 and R40.
 
 references:
 - https://www.schach-computer.info/wiki/index.php?title=Tasc_R30
@@ -54,7 +47,11 @@ TODO:
   sound pitch is correct now though
 - does the R40 version have the same clock divider value?
 
-******************************************************************************/
+BTANB:
+- R40 calls itself "R30" on the system information screen (there is a photo of
+  an R40 that does say "R40", but it appears to be a modified ROM)
+
+*******************************************************************************/
 
 #include "emu.h"
 
@@ -62,8 +59,7 @@ TODO:
 #include "machine/nvram.h"
 #include "machine/ram.h"
 #include "machine/smartboard.h"
-#include "machine/timer.h"
-#include "sound/spkrdev.h"
+#include "sound/dac.h"
 #include "video/t6963c.h"
 
 #include "speaker.h"
@@ -80,40 +76,45 @@ public:
 	tasc_state(const machine_config &mconfig, device_type type, const char *tag) :
 		driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
+		m_boot_view(*this, "boot_view"),
 		m_rom(*this, "maincpu"),
 		m_ram(*this, "ram"),
 		m_nvram(*this, "nvram", 0x20000, ENDIANNESS_LITTLE),
 		m_lcd(*this, "lcd"),
 		m_smartboard(*this, "smartboard"),
-		m_speaker(*this, "speaker"),
-		m_disable_bootrom(*this, "disable_bootrom"),
+		m_dac(*this, "dac"),
 		m_inputs(*this, "IN.%u", 0U),
 		m_out_leds(*this, "pled%u", 0U)
 	{ }
 
 	void tasc(machine_config &config);
 
-	DECLARE_INPUT_CHANGED_MEMBER(switch_cpu_freq) { set_cpu_freq(); }
+	DECLARE_INPUT_CHANGED_MEMBER(change_cpu_freq);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void device_post_load() override { install_bootrom(m_bootrom_enabled); }
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	// devices/pointers
 	required_device<arm_cpu_device> m_maincpu;
+	memory_view m_boot_view;
 	required_region_ptr<u32> m_rom;
 	required_device<ram_device> m_ram;
 	memory_share_creator<u8> m_nvram;
 	required_device<lm24014h_device> m_lcd;
 	required_device<tasc_sb30_device> m_smartboard;
-	required_device<speaker_sound_device> m_speaker;
-	required_device<timer_device> m_disable_bootrom;
+	required_device<dac_2bit_ones_complement_device> m_dac;
 	required_ioport_array<4> m_inputs;
 	output_finder<2> m_out_leds;
 
-	void main_map(address_map &map);
+	emu_timer *m_boot_timer;
+
+	u32 m_control = 0;
+	u32 m_prev_pc = 0;
+	u64 m_prev_cycle = 0;
+
+	void main_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	u32 input_r();
@@ -123,21 +124,23 @@ private:
 	u8 nvram_r(offs_t offset) { return m_nvram[offset]; }
 	void nvram_w(offs_t offset, u8 data) { m_nvram[offset] = data; }
 
-	void set_cpu_freq();
-	void install_bootrom(bool enable);
-	TIMER_DEVICE_CALLBACK_MEMBER(disable_bootrom) { install_bootrom(false); }
-	bool m_bootrom_enabled = false;
-
-	u32 m_control = 0;
-	u32 m_prev_pc = 0;
-	u64 m_prev_cycle = 0;
+	TIMER_CALLBACK_MEMBER(disable_bootrom) { m_boot_view.select(1); }
 };
+
+
+
+/*******************************************************************************
+    Initialization
+*******************************************************************************/
 
 void tasc_state::machine_start()
 {
 	m_out_leds.resolve();
 
-	save_item(NAME(m_bootrom_enabled));
+	m_boot_timer = timer_alloc(FUNC(tasc_state::disable_bootrom), this);
+	m_boot_view[1].install_ram(0, m_ram->size() - 1, m_ram->pointer());
+
+	// register for savestates
 	save_item(NAME(m_control));
 	save_item(NAME(m_prev_pc));
 	save_item(NAME(m_prev_cycle));
@@ -145,46 +148,32 @@ void tasc_state::machine_start()
 
 void tasc_state::machine_reset()
 {
-	install_bootrom(true);
-	set_cpu_freq();
+	m_boot_view.select(0);
+	m_boot_timer->adjust(attotime::never);
 
 	m_prev_pc = m_maincpu->pc();
 	m_prev_cycle = m_maincpu->total_cycles();
 }
 
-void tasc_state::set_cpu_freq()
+INPUT_CHANGED_MEMBER(tasc_state::change_cpu_freq)
 {
 	// R30 is 30MHz, R40 is 40MHz
-	m_maincpu->set_unscaled_clock((ioport("FAKE")->read() & 1) ? 40_MHz_XTAL : 30_MHz_XTAL);
+	m_maincpu->set_unscaled_clock((newval & 1) ? 40_MHz_XTAL : 30_MHz_XTAL);
 }
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
-
-void tasc_state::install_bootrom(bool enable)
-{
-	address_space &program = m_maincpu->space(AS_PROGRAM);
-	program.unmap_readwrite(0, std::max(m_rom.bytes(), size_t(m_ram->size())) - 1);
-
-	// bootrom bankswitch
-	if (enable)
-		program.install_read_handler(0, m_rom.bytes() - 1, read32sm_delegate(*this, FUNC(tasc_state::rom_r)));
-	else
-		program.install_ram(0, m_ram->size() - 1, m_ram->pointer());
-
-	m_bootrom_enabled = enable;
-}
+*******************************************************************************/
 
 u32 tasc_state::input_r()
 {
 	if (!machine().side_effects_disabled())
 	{
 		// disconnect bootrom from the bus after next opcode
-		if (m_bootrom_enabled && !m_disable_bootrom->enabled())
-			m_disable_bootrom->adjust(m_maincpu->cycles_to_attotime(10));
+		if (m_boot_timer->remaining().is_never())
+			m_boot_timer->adjust(m_maincpu->cycles_to_attotime(10));
 
 		m_maincpu->set_input_line(ARM_FIRQ_LINE, CLEAR_LINE);
 	}
@@ -216,7 +205,7 @@ void tasc_state::control_w(offs_t offset, u32 data, u32 mem_mask)
 	{
 		m_out_leds[0] = BIT(data, 0);
 		m_out_leds[1] = BIT(data, 1);
-		m_speaker->level_w((data >> 2) & 3);
+		m_dac->write((data >> 2) & 3);
 	}
 
 	COMBINE_DATA(&m_control);
@@ -252,12 +241,15 @@ u32 tasc_state::rom_r(offs_t offset)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void tasc_state::main_map(address_map &map)
 {
+	map(0x00000000, 0x007fffff).view(m_boot_view);
+	m_boot_view[0](0x00000000, 0x0003ffff).r(FUNC(tasc_state::rom_r));
+
 	map(0x01000000, 0x01000003).rw(FUNC(tasc_state::input_r), FUNC(tasc_state::control_w));
 	map(0x02000000, 0x0203ffff).r(FUNC(tasc_state::rom_r));
 	map(0x03000000, 0x0307ffff).rw(FUNC(tasc_state::nvram_r), FUNC(tasc_state::nvram_w)).umask32(0x000000ff);
@@ -265,54 +257,52 @@ void tasc_state::main_map(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( tasc )
 	PORT_START("IN.0")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_G) PORT_NAME("PLAY")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_LEFT) PORT_NAME("LEFT")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_P) PORT_NAME("Play")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_LEFT) PORT_NAME("Left")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED)
 
 	PORT_START("IN.1")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_B) PORT_CODE(KEYCODE_BACKSPACE) PORT_NAME("BACK")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_RIGHT) PORT_NAME("RIGHT")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_B) PORT_CODE(KEYCODE_BACKSPACE) PORT_NAME("Back")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_RIGHT) PORT_NAME("Right")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED)
 
 	PORT_START("IN.2")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_M) PORT_NAME("MENU")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_UP) PORT_NAME("UP")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_M) PORT_NAME("Menu")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_UP) PORT_NAME("Up")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_L) PORT_NAME("Left Clock")
 
 	PORT_START("IN.3")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_ENTER_PAD) PORT_NAME("ENTER")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DOWN) PORT_NAME("DOWN")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_ENTER_PAD) PORT_NAME("Enter")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DOWN) PORT_NAME("Down")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_NAME("Right Clock")
 
-	PORT_START("FAKE")
-	PORT_CONFNAME( 0x01, 0x00, "CPU Frequency" ) PORT_CHANGED_MEMBER(DEVICE_SELF, tasc_state, switch_cpu_freq, 0)
+	PORT_START("CPU")
+	PORT_CONFNAME( 0x01, 0x00, "CPU Frequency" ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(tasc_state::change_cpu_freq), 0)
 	PORT_CONFSETTING(    0x00, "30MHz (R30)" )
 	PORT_CONFSETTING(    0x01, "40MHz (R40)" )
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void tasc_state::tasc(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	ARM(config, m_maincpu, 30_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &tasc_state::main_map);
 	m_maincpu->set_copro_type(arm_cpu_device::copro_type::VL86C020);
 
 	const attotime irq_period = attotime::from_hz(32.768_kHz_XTAL / 128); // 256Hz
 	m_maincpu->set_periodic_int(FUNC(tasc_state::irq1_line_assert), irq_period);
-
-	TIMER(config, "disable_bootrom").configure_generic(FUNC(tasc_state::disable_bootrom));
 
 	RAM(config, m_ram).set_extra_options("512K, 1M, 2M, 4M, 8M"); // see driver notes
 	m_ram->set_default_size("512K");
@@ -323,24 +313,22 @@ void tasc_state::tasc(machine_config &config)
 	TASC_SB30(config, m_smartboard);
 	subdevice<sensorboard_device>("smartboard:board")->set_nvram_enable(true);
 
-	/* video hardware */
+	// video hardware
 	LM24014H(config, m_lcd, 0);
 	m_lcd->set_fs(1); // font size 6x8
 
 	config.set_default_layout(layout_tascr30);
 
-	/* sound hardware */
-	SPEAKER(config, "mono").front_center();
-	static const double speaker_levels[4] = { 0.0, 1.0, -1.0, 0.0 };
-	SPEAKER_SOUND(config, m_speaker).add_route(ALL_OUTPUTS, "mono", 0.25);
-	m_speaker->set_levels(4, speaker_levels);
+	// sound hardware
+	SPEAKER(config, "speaker").front_center();
+	DAC_2BIT_ONES_COMPLEMENT(config, m_dac).add_route(ALL_OUTPUTS, "speaker", 0.125);
 }
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( tascr30 ) // system version V1.01 (17-Mar-95), program version 2.50 (26-Feb-95)
 	ROM_REGION32_LE( 0x40000, "maincpu", 0 )
@@ -370,12 +358,12 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME      PARENT  CMP MACHINE  INPUT  CLASS       INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1995, tascr30,  0,       0, tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (The King 2.50)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1993, tascr30a, tascr30, 0, tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (The King 2.20)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1993, tascr30b, tascr30, 0, tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (The King 2.23, TM version)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING | MACHINE_CLICKABLE_ARTWORK ) // competed in several chesscomputer tournaments
-CONS( 1993, tascr30g, tascr30, 0, tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (Gideon 3.1, prototype)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING | MACHINE_CLICKABLE_ARTWORK ) // made in 1993, later released in 2012
+//    YEAR  NAME      PARENT   COMPAT  MACHINE  INPUT  CLASS       INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1995, tascr30,  0,       0,      tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (The King 2.50)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING )
+SYST( 1993, tascr30a, tascr30, 0,      tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (The King 2.20)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING )
+SYST( 1993, tascr30b, tascr30, 0,      tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (The King 2.23, TM version)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING ) // competed in several chesscomputer tournaments
+SYST( 1993, tascr30g, tascr30, 0,      tasc,    tasc,  tasc_state, empty_init, "Tasc", "ChessSystem R30 (Gideon 3.1, prototype)", MACHINE_SUPPORTS_SAVE | MACHINE_IMPERFECT_TIMING ) // made in 1993, later released in 2012

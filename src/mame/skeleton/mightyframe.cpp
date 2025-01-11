@@ -16,6 +16,9 @@ Manuals: http://mightyframe.blogspot.com.au/p/manuals.html
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 
+
+namespace {
+
 class mightyframe_state : public driver_device
 {
 public:
@@ -26,7 +29,7 @@ public:
 
 	void mightyframe(machine_config &config);
 private:
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 	//  required_device<cpu_device> m_maincpu;
 };
 
@@ -49,4 +52,7 @@ ROM_START( mightyframe )
 	ROM_LOAD( "72-01231.26c", 0x0000, 0x8000, CRC(41faf884) SHA1(d0c6f35394b4006bbe9a3f81b658ded37f41d86f) )
 ROM_END
 
-COMP( 1985?, mightyframe, 0, 0, mightyframe, mightyframe, mightyframe_state, empty_init, "Convergent Technologies", "Mightyframe", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+COMP( 1985?, mightyframe, 0, 0, mightyframe, mightyframe, mightyframe_state, empty_init, "Convergent Technologies", "Mightyframe", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

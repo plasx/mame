@@ -13,9 +13,6 @@
 
 #pragma once
 
-#include "debugcpu.h"
-#include "debugcon.h"
-
 #include <string_view>
 
 
@@ -23,27 +20,6 @@ class debugger_commands
 {
 public:
 	debugger_commands(running_machine &machine, debugger_cpu &cpu, debugger_console &console);
-
-	// validates a parameter as a boolean value
-	bool validate_boolean_parameter(std::string_view param, bool &result);
-
-	// validates a parameter as a numeric value
-	bool validate_number_parameter(std::string_view param, u64 &result);
-
-	// validates a parameter as a device
-	bool validate_device_parameter(std::string_view param, device_t *&result);
-
-	// validates a parameter as a CPU
-	bool validate_cpu_parameter(std::string_view param, device_t *&result);
-
-	// validates a parameter as an address space identifier
-	bool validate_device_space_parameter(std::string_view param, int spacenum, address_space *&result);
-
-	// validates a parameter as a target address and retrieves the given address space and address
-	bool validate_target_address_parameter(std::string_view param, int spacenum, address_space *&space, u64 &addr);
-
-	// validates a parameter as a memory region name and retrieves the given region
-	bool validate_memory_region_parameter(std::string_view param, memory_region *&result);
 
 private:
 	struct global_entry
@@ -87,11 +63,6 @@ private:
 		u8          disabled = 0U;
 	};
 
-	device_t &get_device_search_base(std::string_view &param);
-	device_t *get_cpu_by_index(u64 cpunum);
-	bool debug_command_parameter_expression(std::string_view param, parsed_expression &result);
-	bool debug_command_parameter_command(std::string_view param);
-
 	bool cheat_address_is_valid(address_space &space, offs_t address);
 
 	u64 get_cpunum();
@@ -99,7 +70,7 @@ private:
 	u64 global_get(global_entry *global);
 	void global_set(global_entry *global, u64 value);
 
-	bool mini_printf(std::ostream &stream, std::string_view format, int params, u64 *param);
+	bool mini_printf(std::ostream &stream, const std::vector<std::string_view> &params);
 	template <typename T>
 	void execute_index_command(std::vector<std::string_view> const &params, T &&apply, char const *unused_message);
 

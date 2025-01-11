@@ -26,6 +26,8 @@
 #include "screen.h"
 
 
+namespace {
+
 class mobigo2_state : public generalplus_gpac800_game_state
 {
 public:
@@ -70,18 +72,18 @@ INPUT_PORTS_END
 
 DEVICE_IMAGE_LOAD_MEMBER(mobigo2_state::cart_load)
 {
-	uint32_t size = m_cart->common_get_size("rom");
+	uint32_t const size = m_cart->common_get_size("rom");
 	m_cart->rom_alloc(size, GENERIC_ROM16_WIDTH, ENDIANNESS_LITTLE);
 	m_cart->common_load_rom(m_cart->get_rom_base(), size, "rom");
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 DEVICE_IMAGE_LOAD_MEMBER(mobigo_state::cart_load)
 {
-	uint32_t size = m_cart->common_get_size("rom");
+	uint32_t const size = m_cart->common_get_size("rom");
 	m_cart->rom_alloc(size, GENERIC_ROM16_WIDTH, ENDIANNESS_LITTLE);
 	m_cart->common_load_rom(m_cart->get_rom_base(), size, "rom");
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 
@@ -164,6 +166,9 @@ ROM_START( mobigo2 )
 	ROM_LOAD( "mobigo2_bios_ger.bin", 0x00000, 0x8400000, CRC(d5ab613d) SHA1(6fb104057dc3484fa958e2cb20c5dd0c19589f75) ) // SPANSION S34ML01G100TF100
 ROM_END
 
-CONS( 2010, mobigo,  0,      0, mobigo,   mobigo, mobigo_state,  init_mobigo , "VTech", "MobiGo", MACHINE_IS_SKELETON )
-CONS( 2010, mobigos, mobigo, 0, mobigo,   mobigo, mobigo_state,  init_mobigo , "VTech", "MobiGo (Spain)", MACHINE_IS_SKELETON )
-CONS( 2012, mobigo2, 0,      0, mobigo2,  mobigo, mobigo2_state, nand_init840, "VTech", "MobiGo 2 (Germany)", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+CONS( 2010, mobigo,  0,      0, mobigo,   mobigo, mobigo_state,  init_mobigo , "VTech", "MobiGo", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 2010, mobigos, mobigo, 0, mobigo,   mobigo, mobigo_state,  init_mobigo , "VTech", "MobiGo (Spain)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 2012, mobigo2, 0,      0, mobigo2,  mobigo, mobigo2_state, nand_init840, "VTech", "MobiGo 2 (Germany)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

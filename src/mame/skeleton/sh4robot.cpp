@@ -33,6 +33,9 @@ Original site died. None of the downloads in the above wayback page work, so fai
 #include "emu.h"
 #include "cpu/sh/sh4.h"
 
+
+namespace {
+
 class sh4robot_state : public driver_device
 {
 public:
@@ -44,8 +47,8 @@ public:
 	void sh4robot(machine_config &config);
 
 private:
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<sh4_device> m_maincpu;
 };
@@ -99,7 +102,10 @@ ROM_START( sh4robot )
 	//ROM_LOAD( "shix-linux-v1.0.yaffs", 0x0000, 0x7e9e40, CRC(7a7fdb04) SHA1(0b761e2d179335398399cb046de4e591157cb72f))
 ROM_END
 
+} // anonymous namespace
+
+
 /* Driver */
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY      FULLNAME  FLAGS
-COMP( 20??, sh4robot, 0,      0,      sh4robot, sh4robot, sh4robot_state, empty_init, "<unknown>", "Robot",  MACHINE_IS_SKELETON_MECHANICAL )
+COMP( 20??, sh4robot, 0,      0,      sh4robot, sh4robot, sh4robot_state, empty_init, "<unknown>", "Robot",  MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )

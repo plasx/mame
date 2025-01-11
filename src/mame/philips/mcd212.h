@@ -21,8 +21,8 @@ TODO:
 
 *******************************************************************************/
 
-#ifndef MAME_VIDEO_MCD212_H
-#define MAME_VIDEO_MCD212_H
+#ifndef MAME_PHILIPS_MCD212_H
+#define MAME_PHILIPS_MCD212_H
 
 #pragma once
 
@@ -49,16 +49,15 @@ public:
 
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
-	void map(address_map &map);
+	void map(address_map &map) ATTR_COLD;
 
 	template <int Channel> int ram_dtack_cycle_count();
 	int rom_dtack_cycle_count();
 
 protected:
-	// device-level overrides
-	virtual void device_resolve_objects() override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(ica_tick);
 	TIMER_CALLBACK_MEMBER(dca_tick);
@@ -275,4 +274,4 @@ protected:
 // device type definition
 DECLARE_DEVICE_TYPE(MCD212, mcd212_device)
 
-#endif // MAME_VIDEO_MCD212_H
+#endif // MAME_PHILIPS_MCD212_H

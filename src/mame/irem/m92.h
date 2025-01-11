@@ -5,8 +5,8 @@
     Irem M92 hardware
 
 *************************************************************************/
-#ifndef MAME_INCLUDES_M92_H
-#define MAME_INCLUDES_M92_H
+#ifndef MAME_IREM_M92_H
+#define MAME_IREM_M92_H
 
 #pragma once
 
@@ -15,16 +15,17 @@
 #include "machine/timer.h"
 #include "sound/okim6295.h"
 #include "video/bufsprite.h"
+
 #include "emupal.h"
 #include "screen.h"
 #include "tilemap.h"
 
 struct M92_pf_layer_info
 {
-	tilemap_t *     tmap = nullptr;
-	tilemap_t *     wide_tmap = nullptr;
-	uint16_t          vram_base = 0;
-	uint16_t          control[4]{};
+	tilemap_t *tmap = nullptr;
+	tilemap_t *wide_tmap = nullptr;
+	uint16_t vram_base = 0;
+	uint16_t control[4]{};
 };
 
 class m92_state : public driver_device
@@ -55,6 +56,7 @@ public:
 	void psoldier(machine_config &config);
 	void rtypeleo(machine_config &config);
 	void gunforc2(machine_config &config);
+	void geostorma(machine_config &config);
 	void nbbatman2bl(machine_config &config);
 	void bmaster(machine_config &config);
 	void nbbatman(machine_config &config);
@@ -64,10 +66,11 @@ public:
 	void majtitl2(machine_config &config);
 	void majtitl2a(machine_config &config);
 	void mysticri(machine_config &config);
+	void leaguemna(machine_config &config);
 
 	void init_bank();
 
-	DECLARE_READ_LINE_MEMBER(sprite_busy_r);
+	int sprite_busy_r();
 
 private:
 	required_device<buffered_spriteram16_device> m_spriteram;
@@ -117,17 +120,18 @@ private:
 	void m92_update_scroll_positions();
 	void m92_draw_tiles(screen_device &screen, bitmap_ind16 &bitmap,const rectangle &cliprect);
 
-	void lethalth_map(address_map &map);
-	void m92_map(address_map &map);
-	void m92_banked_map(address_map &map);
-	void m92_banked_portmap(address_map &map);
-	void m92_base_map(address_map &map);
-	void m92_portmap(address_map &map);
-	void majtitl2_map(address_map &map);
-	void ppan_portmap(address_map &map);
-	void sound_map(address_map &map);
+	void lethalth_map(address_map &map) ATTR_COLD;
+	void m92_map(address_map &map) ATTR_COLD;
+	void m92_banked_map(address_map &map) ATTR_COLD;
+	void m92_banked_portmap(address_map &map) ATTR_COLD;
+	void m92_base_map(address_map &map) ATTR_COLD;
+	void m92_portmap(address_map &map) ATTR_COLD;
+	void majtitl2_map(address_map &map) ATTR_COLD;
+	void nbbatman2bl_map(address_map &map) ATTR_COLD;
+	void ppan_portmap(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(spritebuffer_done);
 };
 
-#endif // MAME_INCLUDES_M92_H
+#endif // MAME_IREM_M92_H

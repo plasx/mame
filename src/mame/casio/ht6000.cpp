@@ -11,9 +11,11 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "cpu/upd7810/upd7811.h"
+#include "cpu/upd7810/upd7810.h"
 #include "cpu/mcs48/mcs48.h"
 
+
+namespace {
 
 //**************************************************************************
 //  TYPE DEFINITIONS
@@ -34,13 +36,13 @@ public:
 	void ht6000(machine_config &config);
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	required_memory_region m_rom2;
 	required_ioport_array<16> m_switches;
 
-	void maincpu_map(address_map &map);
+	void maincpu_map(address_map &map) ATTR_COLD;
 
 	void port_a_w(uint8_t data);
 
@@ -337,10 +339,12 @@ ROM_START( ht6000 )
 	ROM_LOAD("187_8734h7.bin", 0x000, 0x800, CRC(47b47af7) SHA1(8f0515f95dcc6e224a8a59e0c2cd7ddb4796e34e))
 ROM_END
 
+} // anonymous namespace
+
 
 //**************************************************************************
 //  SYSTEM DRIVERS
 //**************************************************************************
 
 //    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT   CLASS         INIT        COMPANY  FULLNAME   FLAGS
-CONS( 1987, ht6000, 0,      0,      ht6000,  ht6000, ht6000_state, empty_init, "Casio", "HT-6000", MACHINE_IS_SKELETON )
+CONS( 1987, ht6000, 0,      0,      ht6000,  ht6000, ht6000_state, empty_init, "Casio", "HT-6000", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

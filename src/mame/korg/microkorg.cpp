@@ -9,8 +9,11 @@
 ****************************************************************************/
 
 #include "emu.h"
-#include "cpu/h8/h8s2320.h"
+#include "cpu/h8/h8s2329.h"
 #include "machine/intelfsh.h"
+
+
+namespace {
 
 class microkorg_state : public driver_device
 {
@@ -24,7 +27,7 @@ public:
 	void microkorg(machine_config &config);
 
 private:
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<h8s2320_device> m_maincpu;
 };
@@ -58,4 +61,7 @@ ROM_START(microkorg)
 	ROM_LOAD("korg_microkorg_v1.03_29lv800b.ic20", 0x000000, 0x100000, CRC(607ada7e) SHA1(4a6e2f4068cac7493484af2a8c1d1db7d8bd7a17))
 ROM_END
 
-SYST(2002, microkorg, 0, 0, microkorg, microkorg, microkorg_state, empty_init, "Korg", "microKORG Synthesizer/Vocoder", MACHINE_IS_SKELETON)
+} // anonymous namespace
+
+
+SYST(2002, microkorg, 0, 0, microkorg, microkorg, microkorg_state, empty_init, "Korg", "microKORG Synthesizer/Vocoder", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

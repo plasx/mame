@@ -40,6 +40,8 @@ to be a save command.
 #include "bus/rs232/rs232.h"
 
 
+namespace {
+
 class cm1800_state : public driver_device
 {
 public:
@@ -52,9 +54,9 @@ public:
 	void cm1800(machine_config &config);
 
 private:
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
-	virtual void machine_reset() override;
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	u8 uart_status_r();
 	required_device<cpu_device> m_maincpu;
 	required_device<ay31015_device> m_uart;
@@ -123,6 +125,9 @@ ROM_START( cm1800 )
 	ROM_REGION( 0x800, "roms", ROMREGION_ERASEFF )
 	ROM_LOAD( "cm1800.rom", 0x0000, 0x0800, CRC(85d71d25) SHA1(42dc87d2eddc2906fa26d35db88a2e29d50fb481) )
 ROM_END
+
+} // anonymous namespace
+
 
 /* Driver */
 

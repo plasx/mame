@@ -10,6 +10,9 @@ Solbourne computer workstation. This looks like the Series 5E which uses the Cyp
 
 #include "emu.h"
 
+
+namespace {
+
 class solbourne_state : public driver_device
 {
 public:
@@ -50,4 +53,7 @@ ROM_START( sols5e )
 	ROM_LOAD( "10454id.bin",  0x000000, 0x000800, CRC(c94b3371) SHA1(9ef9792ffe26302965023041a969d57749d101f7) )
 ROM_END
 
-COMP( 198?, sols5e, 0, 0, solbourne, solbourne, solbourne_state, empty_init, "Solbourne Computer Inc", "Series 5E Computer Workstation", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+COMP( 198?, sols5e, 0, 0, solbourne, solbourne, solbourne_state, empty_init, "Solbourne Computer Inc", "Series 5E Computer Workstation", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

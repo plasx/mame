@@ -42,6 +42,8 @@
 #include "screen.h"
 
 
+namespace {
+
 #define SCREEN_TAG "screen"
 
 class tekxp330_state : public driver_device
@@ -53,12 +55,12 @@ public:
 	void tekxp330(machine_config &config);
 
 private:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	void cpu_map(address_map &map);
-	void tms_map(address_map &map);
+	void cpu_map(address_map &map) ATTR_COLD;
+	void tms_map(address_map &map) ATTR_COLD;
 };
 
 /* Memory Maps */
@@ -126,7 +128,10 @@ ROM_START( tekxp330 )
 	ROM_LOAD32_DWORD( "xp300.bin", 0x000000, 0x200000, CRC(9a324588) SHA1(a6e10275f8215f446be91128bab4c643693da653) )
 ROM_END
 
+} // anonymous namespace
+
+
 /* System Drivers */
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY      FULLNAME           FLAGS
-COMP( 1992, tekxp330, 0,      0,      tekxp330, tekxp330, tekxp330_state, empty_init, "Tektronix", "TekXpress XP330", MACHINE_IS_SKELETON )
+COMP( 1992, tekxp330, 0,      0,      tekxp330, tekxp330, tekxp330_state, empty_init, "Tektronix", "TekXpress XP330", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

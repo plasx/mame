@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Frank Palazzolo
-#ifndef MAME_VIDEO_ZEROHOUR_STARS_H
-#define MAME_VIDEO_ZEROHOUR_STARS_H
+#ifndef MAME_UNIVERSAL_ZEROHOUR_STARS_H
+#define MAME_UNIVERSAL_ZEROHOUR_STARS_H
 
 #pragma once
 
@@ -17,13 +17,13 @@ public:
 
 	// public interface
 	void set_enable(bool on);
-	void update_state();
+	void update_state(int state);
 	void set_speed(u8 speed, u8 mask);
 	void draw(bitmap_ind16 &bitmap, rectangle const &cliprect);
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	u8 m_enable;
@@ -39,4 +39,4 @@ private:
 
 DECLARE_DEVICE_TYPE(ZEROHOUR_STARS, zerohour_stars_device)
 
-#endif // MAME_VIDEO_ZEROHOUR_STARS_H
+#endif // MAME_UNIVERSAL_ZEROHOUR_STARS_H

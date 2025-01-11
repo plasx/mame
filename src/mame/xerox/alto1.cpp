@@ -13,6 +13,9 @@ Similar in architecture to the Alto II and the Lilith, with 74181 ALUs and uniqu
 
 #include "emu.h"
 
+
+namespace {
+
 class alto1_state : public driver_device
 {
 public:
@@ -77,4 +80,7 @@ ROM_START( alto1 )
 	ROM_LOAD( "pram.bin",     0x2600, 0x0100, CRC(8087140e) SHA1(e17d9756150d41d6ff614afa86808a9c77516749) )
 ROM_END
 
-COMP( 1973, alto1, 0, 0, alto1, alto1, alto1_state, empty_init, "Xerox", "Alto I", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+COMP( 1973, alto1, 0, 0, alto1, alto1, alto1_state, empty_init, "Xerox", "Alto I", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

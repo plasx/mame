@@ -10,8 +10,9 @@
 
 #include "emu.h"
 #include "cpu/arm7/arm7.h"
-#include "cpu/arm7/arm7core.h"
 
+
+namespace {
 
 class sansa_fuze_state : public driver_device
 {
@@ -25,7 +26,7 @@ public:
 
 private:
 	required_device<cpu_device> m_maincpu;
-	void sansa_fuze_map(address_map &map);
+	void sansa_fuze_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -71,6 +72,8 @@ ROM_START( sanfuze2 )
 
 ROM_END
 
+} // anonymous namespace
+
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT       CLASS             INIT        COMPANY    FULLNAME        FLAGS
-CONS( 200?, sanfuze2, 0,      0,      sansa_fuze, sansa_fuze, sansa_fuze_state, empty_init, "Sandisk", "Sansa Fuze 2", MACHINE_IS_SKELETON )
+CONS( 200?, sanfuze2, 0,      0,      sansa_fuze, sansa_fuze, sansa_fuze_state, empty_init, "Sandisk", "Sansa Fuze 2", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

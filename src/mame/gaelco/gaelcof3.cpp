@@ -52,6 +52,8 @@
 #include "speaker.h"
 
 
+namespace {
+
 class gaelcof3_state : public driver_device
 {
 public:
@@ -137,6 +139,9 @@ ROM_START( susanita )
 	ROM_LOAD( "susanita.u1", 0x00000, 0x40000, CRC(766868cb) SHA1(eb42dc46b865bc448052d9d67c840e51c49ce49a) )
 ROM_END
 
-GAME( 199?, autopapa,  0, gaelcof3, gaelcof3, gaelcof3_state, empty_init, ROT0, "Gaelco", "El auto feo",     MACHINE_IS_SKELETON_MECHANICAL )
-GAME( 199?, donpepito, 0, gaelcof3, gaelcof3, gaelcof3_state, empty_init, ROT0, "Gaelco", "Hola Don Pepito", MACHINE_IS_SKELETON_MECHANICAL )
-GAME( 199?, susanita,  0, gaelcof3, gaelcof3, gaelcof3_state, empty_init, ROT0, "Gaelco", "Susanita",        MACHINE_IS_SKELETON_MECHANICAL )
+} // anonymous namespace
+
+
+GAME( 199?, autopapa,  0, gaelcof3, gaelcof3, gaelcof3_state, empty_init, ROT0, "Gaelco", "El auto feo",     MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )
+GAME( 199?, donpepito, 0, gaelcof3, gaelcof3, gaelcof3_state, empty_init, ROT0, "Gaelco", "Hola Don Pepito", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )
+GAME( 199?, susanita,  0, gaelcof3, gaelcof3, gaelcof3_state, empty_init, ROT0, "Gaelco", "Susanita",        MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )

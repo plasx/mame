@@ -247,6 +247,8 @@
 #include "speaker.h"
 
 
+namespace {
+
 class bingoman_state : public driver_device
 {
 public:
@@ -259,9 +261,9 @@ public:
 
 protected:
 	// driver_device overrides
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	// devices
@@ -270,7 +272,7 @@ private:
 	// screen updates
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void bingoman_palette(palette_device &palette) const;
-	void bingoman_prg_map(address_map &map);
+	void bingoman_prg_map(address_map &map) ATTR_COLD;
 };
 
 void bingoman_state::video_start()
@@ -465,6 +467,8 @@ ROM_START( bingomana )
 	ROM_LOAD( "103u1301_atf16v8bql.u13", 0x9000, 0x0892, CRC(e8b65072) SHA1(b2f7d70ee228c28a19c2594fc3631b8afd4a0f5e) )
 ROM_END
 
+} // anonymous namespace
+
 
 /***************************************************************************
 
@@ -473,5 +477,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME       PARENT    MACHINE    INPUT     STATE           INIT        ROT    COMPANY          FULLNAME                    FLAGS   */
-GAME( 1993, bingoman,  0,        bingoman,  bingoman, bingoman_state, empty_init, ROT0, "HP Automaten",  "Bingo Mania (P03-P07-P14)", MACHINE_IS_SKELETON )
-GAME( 1993, bingomana, bingoman, bingoman,  bingoman, bingoman_state, empty_init, ROT0, "HP Automaten",  "Bingo Mania (A03)",         MACHINE_IS_SKELETON )
+GAME( 1993, bingoman,  0,        bingoman,  bingoman, bingoman_state, empty_init, ROT0, "HP Automaten",  "Bingo Mania (P03-P07-P14)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+GAME( 1993, bingomana, bingoman, bingoman,  bingoman, bingoman_state, empty_init, ROT0, "HP Automaten",  "Bingo Mania (A03)",         MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

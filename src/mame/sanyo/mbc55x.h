@@ -7,8 +7,8 @@
     Phill Harvey-Smith
     2011-01-29.
 */
-#ifndef MAME_INCLUDES_MBC55X_H
-#define MAME_INCLUDES_MBC55X_H
+#ifndef MAME_SANYO_MBC55X_H
+#define MAME_SANYO_MBC55X_H
 
 #pragma once
 
@@ -27,8 +27,6 @@
 #include "video/mc6845.h"
 
 #include "emupal.h"
-
-#include "formats/pc_dsk.h"
 
 
 #define MAINCPU_TAG "maincpu"
@@ -94,10 +92,10 @@ public:
 	required_device<address_map_bank_device> m_iodecode;
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
-	virtual void video_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
+	virtual void video_reset() override ATTR_COLD;
 
 private:
 	uint8_t iodecode_r(offs_t offset);
@@ -109,19 +107,19 @@ private:
 	uint8_t printer_status_r();
 	void printer_data_w(uint8_t data);
 	void disk_select_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(printer_busy_w);
-	DECLARE_WRITE_LINE_MEMBER(printer_paper_end_w);
-	DECLARE_WRITE_LINE_MEMBER(printer_select_w);
+	void printer_busy_w(int state);
+	void printer_paper_end_w(int state);
+	void printer_select_w(int state);
 
-	DECLARE_WRITE_LINE_MEMBER(vid_hsync_changed);
-	DECLARE_WRITE_LINE_MEMBER(vid_vsync_changed);
+	void vid_hsync_changed(int state);
+	void vid_vsync_changed(int state);
 
 	MC6845_UPDATE_ROW(crtc_update_row);
 	void mbc55x_palette(palette_device &palette) const;
 
-	void mbc55x_io(address_map &map);
-	void mbc55x_mem(address_map &map);
-	void mbc55x_iodecode(address_map &map);
+	void mbc55x_io(address_map &map) ATTR_COLD;
+	void mbc55x_mem(address_map &map) ATTR_COLD;
+	void mbc55x_iodecode(address_map &map) ATTR_COLD;
 
 	void set_ram_size();
 
@@ -180,4 +178,4 @@ private:
 
 #define OUTPUT_SEGOFS(mess,seg,ofs)  logerror("%s=%04X:%04X [%08X]\n",mess,seg,ofs,((seg<<4)+ofs))
 
-#endif // MAME_INCLUDES_MBC55X_H
+#endif // MAME_SANYO_MBC55X_H

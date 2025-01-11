@@ -205,13 +205,14 @@ void minx_cpu_device::execute_run()
 				/* Set Interrupt Branch flag */
 				m_F |= 0x80;
 				m_V = 0;
-				m_PC = rd16( standard_irq_callback( 0 ) << 1 );
+				m_PC = rd16( standard_irq_callback( 0, m_PC ) << 1 );
 				m_icount -= 28;     /* This cycle count is a guess */
 			}
 		}
 
 		if ( m_halted )
 		{
+			debugger_wait_hook();
 			m_icount -= insnminx_cycles_CE[0xAE];
 		}
 		else

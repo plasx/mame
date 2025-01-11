@@ -40,7 +40,7 @@ enum
      O4 14 |___________| 15 O3
 
             ____   ____
-   AVss  1 |*   \_/    | 48 EC1
+   AVss  1 |*   \_/    | 40 EC1
    AVdd  2 |           | 39 INT
      R0  3 |           | 38 OSC OUT
      R1  4 |           | 37 OSC IN
@@ -75,12 +75,11 @@ protected:
 	tms2100_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, u8 o_pins, u8 r_pins, u8 pc_bits, u8 byte_bits, u8 x_bits, u8 stack_levels, int rom_width, address_map_constructor rom_map, int ram_width, address_map_constructor ram_map);
 
 	// overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 	virtual void device_clock_changed() override { reset_prescaler(); }
 
-	virtual u32 execute_input_lines() const noexcept override { return 2; }
 	virtual void execute_set_input(int line, int state) override;
 	virtual bool execute_input_edge_triggered(int inputnum) const noexcept override { return inputnum == TMS2100_INPUT_LINE_INT || inputnum == TMS2100_INPUT_LINE_EC1; }
 
@@ -117,15 +116,15 @@ protected:
 	int m_ec1_pin;      // EC1 pin state
 
 	// interrupt stack
-	u8 m_pb_save;
-	u8 m_cb_save;
-	u8 m_a_save;
-	u8 m_ac2_save;
-	u8 m_x_save;
-	u8 m_y_save;
-	u8 m_s_save;
-	u8 m_sl_save;
-	u8 m_o_save;
+	u8 m_pb_stack;
+	u8 m_cb_stack;
+	u8 m_a_stack;
+	u8 m_ac2_stack;
+	u8 m_x_stack;
+	u8 m_y_stack;
+	u8 m_s_stack;
+	u8 m_sl_stack;
+	u8 m_o_stack;
 };
 
 class tms2170_cpu_device : public tms2100_cpu_device

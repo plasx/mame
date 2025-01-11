@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Mike Harris, Aaron Giles
-#ifndef MAME_MACHINE_NAMCO51_H
-#define MAME_MACHINE_NAMCO51_H
+#ifndef MAME_NAMCO_NAMCO51_H
+#define MAME_NAMCO_NAMCO51_H
 
 #pragma once
 
@@ -17,18 +17,18 @@ public:
 	auto output_callback() { return m_out.bind(); }
 	auto lockout_callback() { return m_lockout.bind(); }
 
-	DECLARE_WRITE_LINE_MEMBER( reset );
-	DECLARE_WRITE_LINE_MEMBER( vblank );
-	DECLARE_WRITE_LINE_MEMBER( rw );
-	DECLARE_WRITE_LINE_MEMBER( chip_select );
+	void reset(int state);
+	void vblank(int state);
+	void rw(int state);
+	void chip_select(int state);
 	void write(uint8_t data);
 	uint8_t read();
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	// internal state
@@ -40,18 +40,15 @@ private:
 	devcb_write_line m_lockout;
 
 	uint8_t K_r();
-	uint8_t R0_r();
-	uint8_t R1_r();
-	uint8_t R2_r();
-	uint8_t R3_r();
+	template<int N> uint8_t R_r();
 	void O_w(uint8_t data);
 	void P_w(uint8_t data);
 
-	TIMER_CALLBACK_MEMBER( rw_sync );
-	TIMER_CALLBACK_MEMBER( write_sync );
-	TIMER_CALLBACK_MEMBER( O_w_sync );
+	TIMER_CALLBACK_MEMBER(rw_sync);
+	TIMER_CALLBACK_MEMBER(write_sync);
+	TIMER_CALLBACK_MEMBER(O_w_sync);
 };
 
 DECLARE_DEVICE_TYPE(NAMCO_51XX, namco_51xx_device)
 
-#endif // NAMCO_51XX
+#endif // MAME_NAMCO_51XX

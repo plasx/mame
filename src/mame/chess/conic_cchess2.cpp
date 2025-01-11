@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:bataais
-/******************************************************************************
+/*******************************************************************************
 
 Conic Computer Chess (model 07012), also sold under the same name by
 Hanimex (model HMG 1200) and Westrak (model CC 1). It's also known as
@@ -24,7 +24,7 @@ Hardware notes:
 BTANB:
 - Learn button still works when in modify-mode
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
@@ -37,7 +37,7 @@ BTANB:
 #include "speaker.h"
 
 // internal artwork
-#include "conic_cchess2.lh" // clickable
+#include "conic_cchess2.lh"
 
 
 namespace {
@@ -62,7 +62,7 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(reset_button) { m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? ASSERT_LINE : CLEAR_LINE); }
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
@@ -70,11 +70,15 @@ private:
 	required_device_array<pia6821_device, 2> m_pia;
 	required_device<sensorboard_device> m_board;
 	required_device<pwm_display_device> m_display;
-	required_device<dac_bit_interface> m_dac;
+	required_device<dac_1bit_device> m_dac;
 	required_ioport_array<8> m_inputs;
 
+	u8 m_inp_mux = 0;
+	u8 m_led_data = 0;
+	u8 m_dac_on = 0;
+
 	// address maps
-	void main_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	void update_display();
@@ -84,10 +88,6 @@ private:
 	u8 pia1_pa_r();
 	u8 pia1_pb_r();
 	void pia1_pb_w(u8 data);
-
-	u8 m_inp_mux = 0;
-	u8 m_led_data = 0;
-	int m_dac_on = 0;
 };
 
 void cchess2_state::machine_start()
@@ -99,9 +99,9 @@ void cchess2_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 void cchess2_state::update_display()
 {
@@ -162,9 +162,9 @@ void cchess2_state::pia1_pb_w(u8 data)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void cchess2_state::main_map(address_map &map)
 {
@@ -177,9 +177,9 @@ void cchess2_state::main_map(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( cncchess2 )
 	PORT_START("IN.0")
@@ -225,26 +225,26 @@ static INPUT_PORTS_START( cncchess2 )
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_EQUALS) PORT_NAME("12 / Black King")
 
 	PORT_START("RESET")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_CHANGED_MEMBER(DEVICE_SELF, cchess2_state, reset_button, 0) PORT_NAME("Reset")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(cchess2_state::reset_button), 0) PORT_NAME("Reset")
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void cchess2_state::cncchess2(machine_config &config)
 {
 	// basic machine hardware
-	M6504(config, m_maincpu, 1000000); // approximation, no XTAL
+	M6504(config, m_maincpu, 1'000'000); // approximation, no XTAL
 	m_maincpu->set_addrmap(AS_PROGRAM, &cchess2_state::main_map);
 
-	PIA6821(config, m_pia[0], 0);
+	PIA6821(config, m_pia[0]);
 	m_pia[0]->writepa_handler().set(FUNC(cchess2_state::pia0_pa_w));
 	m_pia[0]->writepb_handler().set(FUNC(cchess2_state::pia0_pb_w));
 
-	PIA6821(config, m_pia[1], 0);
+	PIA6821(config, m_pia[1]);
 	m_pia[1]->readpa_handler().set(FUNC(cchess2_state::pia1_pa_r));
 	m_pia[1]->readpb_handler().set(FUNC(cchess2_state::pia1_pb_r));
 	m_pia[1]->writepb_handler().set(FUNC(cchess2_state::pia1_pb_w));
@@ -264,9 +264,9 @@ void cchess2_state::cncchess2(machine_config &config)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( cncchess2 )
 	ROM_REGION( 0x2000, "maincpu", 0 )
@@ -277,9 +277,9 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME       PARENT CMP MACHINE    INPUT      STATE          INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1980, cncchess2, 0,      0, cncchess2, cncchess2, cchess2_state, empty_init, "Conic", "Computer Chess (Conic, model 7012)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME       PARENT  COMPAT  MACHINE    INPUT      CLASS          INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1980, cncchess2, 0,      0,      cncchess2, cncchess2, cchess2_state, empty_init, "Conic", "Computer Chess (Conic, model 7012)", MACHINE_SUPPORTS_SAVE )

@@ -5,8 +5,8 @@
  * includes/intv.h
  *
  ****************************************************************************/
-#ifndef MAME_INCLUDES_INTV_H
-#define MAME_INCLUDES_INTV_H
+#ifndef MAME_MATTEL_INTV_H
+#define MAME_MATTEL_INTV_H
 
 #pragma once
 
@@ -47,7 +47,8 @@ public:
 		m_region_keyboard(*this, "keyboard"),
 		m_io_test(*this, "TEST"),
 		m_gfxdecode(*this, "gfxdecode"),
-		m_palette(*this, "palette")
+		m_palette(*this, "palette"),
+		m_intv_keyboard(*this, "ROW%X", 0U)
 	{ }
 
 	void intvkbd(machine_config &config);
@@ -61,9 +62,9 @@ public:
 	void init_intv();
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 	emu_timer *m_int_complete_timer;
 	emu_timer *m_int2_complete_timer;
@@ -126,12 +127,12 @@ private:
 	TIMER_CALLBACK_MEMBER(interrupt_complete);
 	TIMER_CALLBACK_MEMBER(btb_fill);
 
-	void intv2_mem(address_map &map);
-	void intv_mem(address_map &map);
-	void intvecs_mem(address_map &map);
-	void intvkbd2_mem(address_map &map);
-	void intvkbd_mem(address_map &map);
-	void intvoice_mem(address_map &map);
+	void intv2_mem(address_map &map) ATTR_COLD;
+	void intv_mem(address_map &map) ATTR_COLD;
+	void intvecs_mem(address_map &map) ATTR_COLD;
+	void intvkbd2_mem(address_map &map) ATTR_COLD;
+	void intvkbd_mem(address_map &map) ATTR_COLD;
+	void intvoice_mem(address_map &map) ATTR_COLD;
 
 	int m_is_keybd = 0;
 
@@ -145,7 +146,7 @@ private:
 	optional_device<gfxdecode_device> m_gfxdecode;
 	required_device<palette_device> m_palette;
 
-	ioport_port *m_intv_keyboard[10];
+	optional_ioport_array<10> m_intv_keyboard;
 };
 
-#endif // MAME_INCLUDES_INTV_H
+#endif // MAME_MATTEL_INTV_H

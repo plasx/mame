@@ -5,8 +5,8 @@
  * includes/vectrex.h
  *
  ****************************************************************************/
-#ifndef MAME_INCLUDES_VECTREX_H
-#define MAME_INCLUDES_VECTREX_H
+#ifndef MAME_MILTONBRADLEY_VECTREX_H
+#define MAME_MILTONBRADLEY_VECTREX_H
 
 #pragma once
 
@@ -50,7 +50,7 @@ protected:
 	uint8_t via_r(offs_t offset);
 	void via_w(offs_t offset, uint8_t data);
 	virtual void driver_start() override;
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	TIMER_CALLBACK_MEMBER(imager_change_color);
 	TIMER_CALLBACK_MEMBER(update_level);
@@ -68,10 +68,9 @@ protected:
 	uint8_t via_pa_r();
 	void via_pb_w(uint8_t data);
 	void via_pa_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(via_ca2_w);
-	DECLARE_WRITE_LINE_MEMBER(via_cb2_w);
-	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(cart_load);
-	DECLARE_WRITE_LINE_MEMBER(via_irq);
+	void via_ca2_w(int state);
+	void via_cb2_w(int state);
+	void via_irq(int state);
 
 	void vectrex_base(machine_config &config);
 
@@ -163,11 +162,11 @@ public:
 	void vectrex(machine_config &config);
 
 protected:
-	virtual void video_start() override;
-	virtual void machine_start() override;
+	virtual void video_start() override ATTR_COLD;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
-	void vectrex_map(address_map &map);
+	void vectrex_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -185,9 +184,9 @@ private:
 	void raaspec_led_w(uint8_t data);
 	uint8_t s1_via_pb_r();
 
-	void raaspec_map(address_map &map);
+	void raaspec_map(address_map &map) ATTR_COLD;
 
 	required_ioport m_io_coin;
 };
 
-#endif // MAME_INCLUDES_VECTREX_H
+#endif // MAME_MILTONBRADLEY_VECTREX_H

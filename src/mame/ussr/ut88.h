@@ -5,8 +5,8 @@
  * includes/ut88.h
  *
  ****************************************************************************/
-#ifndef MAME_INCLUDES_UT88_H
-#define MAME_INCLUDES_UT88_H
+#ifndef MAME_USSR_UT88_H
+#define MAME_USSR_UT88_H
 
 #pragma once
 
@@ -65,8 +65,8 @@ public:
 	void ut88(machine_config &config);
 
 private:
-	void machine_start() override;
-	void machine_reset() override;
+	void machine_start() override ATTR_COLD;
+	void machine_reset() override ATTR_COLD;
 	uint8_t keyboard_r(offs_t offset);
 	void keyboard_w(offs_t offset, uint8_t data);
 	void sound_w(uint8_t data);
@@ -76,8 +76,8 @@ private:
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	int m_keyboard_mask = 0;
 
@@ -109,12 +109,12 @@ public:
 	void ut88mini(machine_config &config);
 
 private:
-	void machine_start() override;
-	void machine_reset() override;
+	void machine_start() override ATTR_COLD;
+	void machine_reset() override ATTR_COLD;
 	TIMER_DEVICE_CALLBACK_MEMBER(display_timer);
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	uint8_t keyboard_r();
 	void led_w(offs_t offset, uint8_t data);
@@ -126,4 +126,4 @@ private:
 };
 
 
-#endif // MAME_INCLUDES_UT88_H
+#endif // MAME_USSR_UT88_H

@@ -14,6 +14,9 @@ whatever MCU type this uses boots from an internal ROM/PROM/EPROM but can also e
 #include "emu.h"
 #include "cpu/mc68hc11/mc68hc11.h"
 
+
+namespace {
+
 class ampscarp_state : public driver_device
 {
 public:
@@ -25,7 +28,7 @@ public:
 	void ampscarp(machine_config &config);
 
 private:
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 	required_device<cpu_device> m_maincpu;
 };
 
@@ -48,4 +51,7 @@ ROM_START( ampscarp )
 	ROM_LOAD( "motorola_amps_car_phone_dump.bin", 0x0000, 0x20000, CRC(677ec85e) SHA1(219611b6c4b16461705e2df61d79a0f7ac8f529f) )
 ROM_END
 
-COMP( 1998, ampscarp, 0, 0, ampscarp, ampscarp, ampscarp_state, empty_init, "Motorola", "AMPS Car Phone", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+COMP( 1998, ampscarp, 0, 0, ampscarp, ampscarp, ampscarp_state, empty_init, "Motorola", "AMPS Car Phone", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

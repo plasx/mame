@@ -156,19 +156,19 @@ protected:
 	virtual void video_reset();
 
 	// device-level overrides
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual ioport_constructor device_input_ports() const override;
-	virtual void device_start() override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_reset_after_children() override;
 
 	// generic video
-	void flip_screen_set(u32 on);
-	void flip_screen_x_set(u32 on);
-	void flip_screen_y_set(u32 on);
-	u32 flip_screen() const { return m_flip_screen_x; }
-	u32 flip_screen_x() const { return m_flip_screen_x; }
-	u32 flip_screen_y() const { return m_flip_screen_y; }
+	void flip_screen_set(int state);
+	void flip_screen_x_set(int state);
+	void flip_screen_y_set(int state);
+	u8 flip_screen() const { return m_flip_screen_x; } // & m_flip_screen_y?
+	u8 flip_screen_x() const { return m_flip_screen_x; }
+	u8 flip_screen_y() const { return m_flip_screen_y; }
 
 private:
 	// helpers
@@ -180,8 +180,8 @@ private:
 	driver_callback_delegate  m_callbacks[CB_COUNT];  // start/reset callbacks
 
 	// generic video
-	u8                          m_flip_screen_x;
-	u8                          m_flip_screen_y;
+	u8                        m_flip_screen_x;
+	u8                        m_flip_screen_y;
 };
 
 

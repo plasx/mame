@@ -24,6 +24,8 @@ Status: Starts in the weeds.
 #include "screen.h"
 
 
+namespace {
+
 class mk90_state : public driver_device
 {
 public:
@@ -35,10 +37,10 @@ public:
 	void mk90(machine_config &config);
 
 private:
-	virtual void machine_reset() override;
-	virtual void machine_start() override;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void machine_start() override ATTR_COLD;
 
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -108,6 +110,9 @@ ROM_START( mk90 )
 	ROMX_LOAD( "mk90ro20.bin",  0x8000, 0x8000, CRC(d8b3a5f5) SHA1(8f7ab2d97c7466392b6354c0ea7017531c2133ae), ROM_BIOS(1))
 	ROMX_LOAD( "mk90ro20t.bin", 0x4000, 0x4000, CRC(0f4b9434) SHA1(c74bbde6d201913c9e67ef8e2abe14b784187f8d), ROM_BIOS(1))  // Expansion ROM
 ROM_END
+
+} // anonymous namespace
+
 
 /* Driver */
 

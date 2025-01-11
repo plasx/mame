@@ -67,6 +67,8 @@
 #include "meybjack.lh"
 
 
+namespace {
+
 class meyc8080_state : public driver_device
 {
 public:
@@ -91,7 +93,7 @@ private:
 	void meyc8080_dac_3_w(uint8_t data);
 	void meyc8080_dac_4_w(uint8_t data);
 	uint32_t screen_update_meyc8080(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	void meyc8080_map(address_map &map);
+	void meyc8080_map(address_map &map) ATTR_COLD;
 
 	virtual void machine_start() override { m_lamps.resolve(); }
 
@@ -340,7 +342,7 @@ void meyc8080_state::meyc8080_map(address_map &map)
 
 static INPUT_PORTS_START( wldarrow )
 	PORT_START("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_DIPNAME( 0x04, 0x00, "Monitor" )
 	PORT_DIPSETTING(    0x00, "Color" )
@@ -401,7 +403,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( mdrawpkr )
 	PORT_START("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -460,7 +462,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( mdrawpkra )
 	PORT_START("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -519,7 +521,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( casbjack )
 	PORT_START("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_VBLANK("screen")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_DEVICE_MEMBER("screen", FUNC(screen_device::vblank))
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -725,6 +727,8 @@ ROM_START( casbjack )
 	ROM_LOAD( "k3", 0x2800, 0x0800, CRC(9cd6b843) SHA1(fb9c5c5ba96ebb75dc42e7c891d6da2a8a1ea6c1) )
 	ROM_LOAD( "k2", 0x3000, 0x0800, CRC(5f82eafa) SHA1(4f5a4dc773ceae9a69ec532166047867db4ddadf) )
 ROM_END
+
+} // anonymous namespace
 
 
 /*************************************

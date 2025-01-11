@@ -16,16 +16,18 @@
 #include "emufwd.h"
 
 #include "bitmap.h"
+#include "interface/midiport.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 
 // forward references
 class input_type_entry;
-class osd_midi_device;
+namespace osd { class midi_input_port; class midi_output_port; }
 namespace ui { class menu_item; }
 
 
@@ -66,7 +68,8 @@ public:
 	// general overridables
 	virtual void init(running_machine &machine) = 0;
 	virtual void update(bool skip_redraw) = 0;
-	virtual void input_update() = 0;
+	virtual void input_update(bool relative_reset) = 0;
+	virtual void check_osd_inputs() = 0;
 	virtual void set_verbose(bool print_verbose) = 0;
 
 	// debugger overridables
@@ -92,28 +95,13 @@ public:
 	// command option overrides
 	virtual bool execute_command(const char *command) = 0;
 
-	// midi interface
-	virtual std::unique_ptr<osd_midi_device> create_midi_device() = 0;
+	// MIDI interface
+	virtual std::unique_ptr<osd::midi_input_port> create_midi_input(std::string_view name) = 0;
+	virtual std::unique_ptr<osd::midi_output_port> create_midi_output(std::string_view name) = 0;
+	virtual std::vector<osd::midi_port_info> list_midi_ports() = 0;
 
 protected:
 	virtual ~osd_interface() { }
-};
-
-
-/***************************************************************************
-    MIDI I/O INTERFACES
-***************************************************************************/
-
-class osd_midi_device
-{
-public:
-	virtual ~osd_midi_device() { }
-	virtual bool open_input(const char *devname) = 0;
-	virtual bool open_output(const char *devname) = 0;
-	virtual void close() = 0;
-	virtual bool poll() = 0;
-	virtual int read(uint8_t *pOut) = 0;
-	virtual void write(uint8_t data) = 0;
 };
 
 #endif  // MAME_OSD_OSDEPEND_H

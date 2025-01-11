@@ -11,6 +11,9 @@
 #include "cpu/h8/h83003.h"
 #include "machine/intelfsh.h"
 
+
+namespace {
+
 class gem_rp_state : public driver_device
 {
 public:
@@ -23,7 +26,7 @@ public:
 	void rp200(machine_config &config);
 
 private:
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<h83003_device> m_maincpu;
 };
@@ -62,4 +65,7 @@ ROM_START(rp200)
 	ROM_LOAD("104023_wave3.ic14", 0x800000, 0x400000, NO_DUMP) // 23C2000G
 ROM_END
 
-SYST(1999, rp200, 0, 0, rp200, rp200, gem_rp_state, empty_init, "Generalmusic", "GEM RealPiano RP200", MACHINE_IS_SKELETON)
+} // anonymous namespace
+
+
+SYST(1999, rp200, 0, 0, rp200, rp200, gem_rp_state, empty_init, "Generalmusic", "GEM RealPiano RP200", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

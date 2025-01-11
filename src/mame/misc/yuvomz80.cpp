@@ -40,6 +40,9 @@ Yuvo PCI117B - I/O board
 - connectors and ttl chips
 */
 
+
+namespace {
+
 class yuvomz80_state : public driver_device
 {
 public:
@@ -52,11 +55,11 @@ public:
 	void hexaprsz(machine_config &config);
 
 private:
-	void audio_mem_map(address_map &map);
-	void audio_io_map(address_map &map);
-	void hexaprsz_audio_io_map(address_map &map);
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void audio_mem_map(address_map &map) ATTR_COLD;
+	void audio_io_map(address_map &map) ATTR_COLD;
+	void hexaprsz_audio_io_map(address_map &map) ATTR_COLD;
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 };
@@ -163,5 +166,8 @@ ROM_START( hexaprsz )
 	ROM_LOAD( "ghp_pcm-b_ver.1.01.ic13",  0x80000, 0x80000, CRC(161838c9) SHA1(52b9c324b01702c1164a462af371d82e8c2eea43) )
 ROM_END
 
-GAME( 1995, hexaprs,  0,       hexaprs,  hexaprs, yuvomz80_state, empty_init, ROT0, "Yuvo / Yubis", "Hexa President (YM2610 set)", MACHINE_IS_SKELETON_MECHANICAL )
-GAME( 1995, hexaprsz, hexaprs, hexaprsz, hexaprs, yuvomz80_state, empty_init, ROT0, "Yuvo / Yubis", "Hexa President (YMZ280B set)", MACHINE_IS_SKELETON_MECHANICAL )
+} // anonymous namespace
+
+
+GAME( 1995, hexaprs,  0,       hexaprs,  hexaprs, yuvomz80_state, empty_init, ROT0, "Yuvo / Yubis", "Hexa President (YM2610 set)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )
+GAME( 1995, hexaprsz, hexaprs, hexaprsz, hexaprs, yuvomz80_state, empty_init, ROT0, "Yuvo / Yubis", "Hexa President (YMZ280B set)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )

@@ -15,7 +15,12 @@
 
 #include "fs_coco_os9.h"
 #include "coco_rawdsk.h"
+#include "fsblk.h"
+
+#include "multibyte.h"
 #include "strformat.h"
+
+#include <optional>
 
 
 using namespace fs;
@@ -115,7 +120,6 @@ public:
 
 	static std::string pick_os9_string(std::string_view raw_string);
 	static std::string to_os9_string(std::string_view s, size_t length);
-	static u32 pick_integer_be(const u8 *data, int length);
 	static util::arbitrary_datetime from_os9_date(u32 os9_date, u16 os9_time = 0);
 	static std::tuple<u32, u16> to_os9_date(const util::arbitrary_datetime &datetime);
 	static bool is_ignored_filename(std::string_view name);
@@ -155,13 +159,10 @@ const char *coco_os9_image::description() const
 //  enumerate_f
 //-------------------------------------------------
 
-void coco_os9_image::enumerate_f(floppy_enumerator &fe, u32 form_factor, const std::vector<u32> &variants) const
+void coco_os9_image::enumerate_f(floppy_enumerator &fe) const
 {
-	if (has(form_factor, variants, floppy_image::FF_525, floppy_image::SSDD))
-	{
-		fe.add(FLOPPY_COCO_RAWDSK_FORMAT, 161280, "coco_rawdsk_os9_35", "CoCo Raw Disk OS-9 single-sided 35 tracks");
-		fe.add(FLOPPY_COCO_RAWDSK_FORMAT, 184320, "coco_rawdsk_os9_40", "CoCo Raw Disk OS-9 single-sided 40 tracks");
-	}
+	fe.add(FLOPPY_COCO_RAWDSK_FORMAT, floppy_image::FF_525, floppy_image::SSSD, 161280, "coco_rawdsk_os9_35", "CoCo Raw Disk OS-9 single-sided 35 tracks");
+	fe.add(FLOPPY_COCO_RAWDSK_FORMAT, floppy_image::FF_525, floppy_image::SSSD, 184320, "coco_rawdsk_os9_40", "CoCo Raw Disk OS-9 single-sided 40 tracks");
 }
 
 
@@ -363,7 +364,7 @@ std::pair<err_t, std::vector<u8>> coco_os9_impl::file_read(const std::vector<std
 err_t coco_os9_impl::format(const meta_data &meta)
 {
 	// for some reason, the OS-9 world favored filling with 0xE5
-	m_blockdev.fill(0xE5);
+	m_blockdev.fill(0xe5);
 
 	// identify geometry info
 	u8 sectors = 18;                // TODO - we need a definitive technique to get the floppy geometry
@@ -427,7 +428,7 @@ err_t coco_os9_impl::format(const meta_data &meta)
 		{
 			u32 pos = (i * sector_bytes + j) * 8;
 			if (pos + 8 < total_allocated_sectors)
-				abblk_bytes[j] = 0xFF;
+				abblk_bytes[j] = 0xff;
 			else if (pos >= total_allocated_sectors)
 				abblk_bytes[j] = 0x00;
 			else
@@ -441,28 +442,28 @@ err_t coco_os9_impl::format(const meta_data &meta)
 	// root directory header
 	auto roothdr_blk = m_blockdev.get(1 + allocation_bitmap_lsns);
 	roothdr_blk.fill(0x00);
-	roothdr_blk.w8(0x00, 0xBF);
+	roothdr_blk.w8(0x00, 0xbf);
 	roothdr_blk.w8(0x01, 0x00);
 	roothdr_blk.w8(0x02, 0x00);
 	roothdr_blk.w24b(0x03, creation_os9date);
 	roothdr_blk.w16b(0x06, creation_os9time);
 	roothdr_blk.w8(0x08, 0x01);
 	roothdr_blk.w8(0x09, 0x00);
-	roothdr_blk.w8(0x0A, 0x00);
-	roothdr_blk.w8(0x0B, 0x00);
-	roothdr_blk.w8(0x0C, 0x40);
-	roothdr_blk.w24b(0x0D, creation_os9date);
+	roothdr_blk.w8(0x0a, 0x00);
+	roothdr_blk.w8(0x0b, 0x00);
+	roothdr_blk.w8(0x0c, 0x40);
+	roothdr_blk.w24b(0x0d, creation_os9date);
 	roothdr_blk.w24b(0x10, 1 + allocation_bitmap_lsns + 1);
 	roothdr_blk.w16b(0x13, 8);
 
 	// root directory data
 	auto rootdata_blk = m_blockdev.get(1 + allocation_bitmap_lsns + 1);
 	rootdata_blk.fill(0x00);
-	rootdata_blk.w8(0x00, 0x2E);
-	rootdata_blk.w8(0x01, 0xAE);
-	rootdata_blk.w8(0x1F, 1 + allocation_bitmap_lsns);
-	rootdata_blk.w8(0x20, 0xAE);
-	rootdata_blk.w8(0x3F, 1 + allocation_bitmap_lsns);
+	rootdata_blk.w8(0x00, 0x2e);
+	rootdata_blk.w8(0x01, 0xae);
+	rootdata_blk.w8(0x1f, 1 + allocation_bitmap_lsns);
+	rootdata_blk.w8(0x20, 0xae);
+	rootdata_blk.w8(0x3f, 1 + allocation_bitmap_lsns);
 	return ERR_OK;
 }
 
@@ -525,7 +526,7 @@ void coco_os9_impl::iterate_directory_entries(const file_header &header, const s
 			continue;
 
 		// set up the child header
-		u32 lsn = pick_integer_be(&directory_data[i * 32] + 29, 3);
+		u32 lsn = get_u24be(&directory_data[i * 32] + 29);
 
 		// invoke the callback
 		done = callback(std::move(filename), lsn);
@@ -579,7 +580,7 @@ std::string coco_os9_impl::pick_os9_string(std::string_view raw_string)
 
 	// and add the final character if we have to
 	if (iter < raw_string.end() && *iter & 0x80)
-		result.append(1, *iter & 0x7F);
+		result.append(1, *iter & 0x7f);
 	return result;
 
 }
@@ -594,22 +595,9 @@ std::string coco_os9_impl::to_os9_string(std::string_view s, size_t length)
 	std::string result(length, '\0');
 	for (auto i = 0; i < std::min(length, s.size()); i++)
 	{
-		result[i] = (s[i] & 0x7F)
+		result[i] = (s[i] & 0x7f)
 			| (i == s.size() ? 0x80 : 0x00);
 	}
-	return result;
-}
-
-
-//-------------------------------------------------
-//  pick_integer_be
-//-------------------------------------------------
-
-u32 coco_os9_impl::pick_integer_be(const u8 *data, int length)
-{
-	u32 result = 0;
-	for (int i = 0; i < length; i++)
-		result |= u32(data[length - i - 1]) << i * 8;
 	return result;
 }
 
@@ -622,11 +610,11 @@ util::arbitrary_datetime coco_os9_impl::from_os9_date(u32 os9_date, u16 os9_time
 {
 	util::arbitrary_datetime dt;
 	memset(&dt, 0, sizeof(dt));
-	dt.year = ((os9_date >> 16) & 0xFF) + 1900;
-	dt.month = (os9_date >> 8) & 0xFF;
-	dt.day_of_month = (os9_date >> 0) & 0xFF;
-	dt.hour = (os9_time >> 8) & 0xFF;
-	dt.minute = (os9_time >> 0) & 0xFF;
+	dt.year = ((os9_date >> 16) & 0xff) + 1900;
+	dt.month = (os9_date >> 8) & 0xff;
+	dt.day_of_month = (os9_date >> 0) & 0xff;
+	dt.hour = (os9_time >> 8) & 0xff;
+	dt.minute = (os9_time >> 0) & 0xff;
 	return dt;
 }
 
@@ -637,11 +625,11 @@ util::arbitrary_datetime coco_os9_impl::from_os9_date(u32 os9_date, u16 os9_time
 
 std::tuple<u32, u16> coco_os9_impl::to_os9_date(const util::arbitrary_datetime &datetime)
 {
-	u32 os9_date = ((datetime.year - 1900) & 0xFF) << 16
-		| (datetime.month & 0xFF) << 8
-		| (datetime.day_of_month & 0xFF) << 0;
-	u16 os9_time = (datetime.hour & 0xFF) << 8
-		| (datetime.minute & 0xFF) << 0;
+	u32 os9_date = ((datetime.year - 1900) & 0xff) << 16
+		| (datetime.month & 0xff) << 8
+		| (datetime.day_of_month & 0xff) << 0;
+	u16 os9_time = (datetime.hour & 0xff) << 8
+		| (datetime.minute & 0xff) << 0;
 	return std::make_tuple(os9_date, os9_time);
 }
 
@@ -654,7 +642,7 @@ bool coco_os9_impl::validate_filename(std::string_view name)
 {
 	return !is_ignored_filename(name)
 		&& name.size() <= 29
-		&& std::find_if(name.begin(), name.end(), [](const char ch) { return ch == '\0' || ch == '/' || ch >= 0x80; }) == name.end();
+		&& std::find_if(name.begin(), name.end(), [](const char ch) { return ch == '\0' || ch == '/' || (ch & 0x80); }) == name.end();
 }
 
 

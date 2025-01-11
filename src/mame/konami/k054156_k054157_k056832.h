@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
-#ifndef MAME_VIDEO_K054156_K054157_K056832_H
-#define MAME_VIDEO_K054156_K054157_K056832_H
+#ifndef MAME_KONAMI_K054156_K054157_K056832_H
+#define MAME_KONAMI_K054156_K054157_K056832_H
 
 #pragma once
 
@@ -63,6 +63,7 @@ public:
 	u32 k_6bpp_rom_long_r(offs_t offset, u32 mem_mask = ~0);
 	u16 rom_word_r(offs_t offset);
 	u8 konmedal_rom_r(offs_t offset);
+	u8 chusenoh_rom_r(offs_t offset);
 	u16 piratesh_rom_r(offs_t offset);
 	u16 mw_rom_word_r(offs_t offset);
 	u16 bishi_rom_word_r(offs_t offset);
@@ -105,7 +106,7 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 	virtual void device_post_load() override;
 
 private:
@@ -205,5 +206,5 @@ private:
 
 DECLARE_DEVICE_TYPE(K056832, k056832_device)
 
-#endif // MAME_VIDEO_K054156_K054157_K056832_H
+#endif // MAME_KONAMI_K054156_K054157_K056832_H
 

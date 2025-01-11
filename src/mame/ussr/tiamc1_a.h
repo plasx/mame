@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Eugene Sandulenko
-#ifndef MAME_AUDIO_TIAMC1_H
-#define MAME_AUDIO_TIAMC1_H
+#ifndef MAME_USSR_TIAMC1_A_H
+#define MAME_USSR_TIAMC1_A_H
 
 #pragma once
 
@@ -22,7 +22,7 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	// sound stream update overrides
 	virtual void sound_stream_update(sound_stream &stream, std::vector<read_stream_view> const &inputs, std::vector<write_stream_view> &outputs) override;
@@ -49,7 +49,6 @@ private:
 	};
 
 
-	void timer8253_reset(struct timer8253struct *t);
 	void timer8253_tick(struct timer8253struct *t,int chn);
 	void timer8253_wr(struct timer8253struct *t, int reg, uint8_t val);
 	char timer8253_get_output(struct timer8253struct *t, int chn);
@@ -64,4 +63,4 @@ private:
 
 DECLARE_DEVICE_TYPE(TIAMC1, tiamc1_sound_device)
 
-#endif // MAME_AUDIO_TIAMC1_H
+#endif // MAME_USSR_TIAMC1_A_H

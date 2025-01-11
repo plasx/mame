@@ -13,6 +13,9 @@
 #include "sound/ay8910.h"
 #include "speaker.h"
 
+
+namespace {
+
 class mmm_state : public driver_device
 {
 public:
@@ -33,8 +36,8 @@ private:
 	u8 ctc_r(offs_t offset);
 	void ctc_w(offs_t offset, u8 data);
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<z80_device> m_maincpu;
 	required_device<z80ctc_device> m_ctc;
@@ -207,5 +210,7 @@ ROM_START( mmm_ldip )
 	ROM_LOAD( "ld4.bin", 0x3000, 0x1000, CRC(970b749f) SHA1(fe6da7abc699db69c0761304f588b5bed899c674) )
 ROM_END
 
+} // anonymous namespace
 
-GAME( 198?,  mmm_ldip,  0,  mmm,  mmm, mmm_state, empty_init, ROT0,  "Maygay",    "Lucky Dip (Maygay)",    MACHINE_IS_SKELETON_MECHANICAL)
+
+GAME( 198?,  mmm_ldip,  0,  mmm,  mmm, mmm_state, empty_init, ROT0,  "Maygay",    "Lucky Dip (Maygay)",    MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK)

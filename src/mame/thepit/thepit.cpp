@@ -186,24 +186,24 @@ uint8_t thepit_state::intrepid_colorram_mirror_r(offs_t offset)
 	return m_colorram[offset];
 }
 
-WRITE_LINE_MEMBER(thepit_state::coin_lockout_w)
+void thepit_state::coin_lockout_w(int state)
 {
 	machine().bookkeeping().coin_lockout_w(0, !state);
 }
 
-WRITE_LINE_MEMBER(thepit_state::sound_enable_w)
+void thepit_state::sound_enable_w(int state)
 {
 	machine().sound().system_mute(!state);
 }
 
-WRITE_LINE_MEMBER(thepit_state::nmi_mask_w)
+void thepit_state::nmi_mask_w(int state)
 {
 	m_nmi_mask = state;
 	if (!m_nmi_mask)
 		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER(thepit_state::vblank_w)
+void thepit_state::vblank_w(int state)
 {
 	if (state)
 	{
@@ -311,7 +311,7 @@ void thepit_state::audio_io_map(address_map &map)
 
 
 static INPUT_PORTS_START( in0_real)
-	PORT_START("IN0")\
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -323,7 +323,7 @@ static INPUT_PORTS_START( in0_real)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( in2_fake )
-	PORT_START("IN2")\
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
@@ -749,13 +749,15 @@ GFXDECODE_END
 void thepit_state::thepit(machine_config &config)
 {
 	/* basic machine hardware */
-	Z80(config, m_maincpu, PIXEL_CLOCK/2);     /* 3.072 MHz */
+	Z80(config, m_maincpu, PIXEL_CLOCK/2); // 3.072 MHz
 	m_maincpu->set_addrmap(AS_PROGRAM, &thepit_state::thepit_main_map);
 
-	Z80(config, m_audiocpu, SOUND_CLOCK/4);     /* 2.5 MHz */
+	Z80(config, m_audiocpu, SOUND_CLOCK/4); // 2.5 MHz
 	m_audiocpu->set_addrmap(AS_PROGRAM, &thepit_state::audio_map);
 	m_audiocpu->set_addrmap(AS_IO, &thepit_state::audio_io_map);
 	m_audiocpu->set_irq_acknowledge_callback(FUNC(thepit_state::vsync_int_ack));
+
+	config.set_maximum_quantum(attotime::from_hz(3000));
 
 	LS259(config, m_mainlatch); // IC42
 	m_mainlatch->q_out_cb<0>().set(FUNC(thepit_state::nmi_mask_w));
@@ -911,6 +913,25 @@ ROM_START( thepitu2 )
 
 	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "82s123.ic4",   0x0000, 0x0020, CRC(a758b567) SHA1(d188c90dba10fe3abaae92488786b555b35218c5) )
+ROM_END
+
+ROM_START( thepitu3 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "pi-38.ic38",   0x0000, 0x1000, CRC(71affecc) SHA1(e64cb2f8d546f5d44dc10a4178f3d211882c45a9) )
+	ROM_LOAD( "pi-39.ic39",   0x1000, 0x1000, CRC(894063cd) SHA1(772ff81cf44d21981f9768f017af5cb81ff57be3) )
+	ROM_LOAD( "pi-40.ic40",   0x2000, 0x1000, CRC(1b488543) SHA1(8991c6424f008ddd15edac953635aecdba4ea696) )
+	ROM_LOAD( "pi-41.ic41",   0x3000, 0x1000, CRC(f33aab67) SHA1(edcc4222c78ce7d8accd4e6ef9f81600a066bda0) )
+	ROM_LOAD( "pi-33.ic33",   0x4000, 0x1000, CRC(394ef216) SHA1(e9f7a3697183e15507b81147ac7b87c24802c65c) )
+
+	ROM_REGION( 0x10000, "audiocpu", 0 )
+	ROM_LOAD( "pi-30.ic30",   0x0000, 0x0800, CRC(1b79dfb6) SHA1(ba78b035a91a67732414ba327640fb771d4323c5) )
+
+	ROM_REGION( 0x1800, "gfx1", 0 ) /* chars and sprites */
+	ROM_LOAD( "pi-9.ic9",     0x0000, 0x0800, CRC(69502afc) SHA1(9baf094baab8325af659879cfb6984eeca0d94bd) )
+	ROM_LOAD( "pi-8.ic8",     0x1000, 0x0800, CRC(2ddd5045) SHA1(baa962a874f00e56c15c264980b1e31a2c9dc270) )
+
+	ROM_REGION( 0x0020, "proms", 0 )
+	ROM_LOAD( "82s123.ic4",   0x0000, 0x0020, CRC(a758b567) SHA1(d188c90dba10fe3abaae92488786b555b35218c5) ) // not dumped for this set
 ROM_END
 
 ROM_START( thepitj )
@@ -1440,6 +1461,7 @@ GAME( 1981, ttfitter,   roundup,  fitter,   fitter,   thepit_state, empty_init, 
 GAME( 1982, thepit,     0,        thepit,   thepit,   thepit_state, empty_init, ROT90, "Zilec Electronics",                           "The Pit", MACHINE_SUPPORTS_SAVE ) // AW == Andy Walker
 GAME( 1982, thepitu1,   thepit,   thepit,   thepit,   thepit_state, empty_init, ROT90, "Zilec Electronics (Centuri license)",         "The Pit (US set 1)", MACHINE_SUPPORTS_SAVE )
 GAME( 1982, thepitu2,   thepit,   thepit,   thepit,   thepit_state, empty_init, ROT90, "Zilec Electronics (Centuri license)",         "The Pit (US set 2)", MACHINE_SUPPORTS_SAVE ) // Bally PCB
+GAME( 1982, thepitu3,   thepit,   thepit,   thepit,   thepit_state, empty_init, ROT90, "Zilec Electronics (Centuri license)",         "The Pit (US set 3)", MACHINE_SUPPORTS_SAVE )
 GAME( 1982, thepitj,    thepit,   thepit,   thepit,   thepit_state, empty_init, ROT90, "Zilec Electronics (Taito license)",           "The Pit (Japan)", MACHINE_SUPPORTS_SAVE )
 GAME( 1982, thehole,    thepit,   thepit,   thepit,   thepit_state, empty_init, ROT90, "bootleg",                                     "The Hole (bootleg of The Pit)", MACHINE_SUPPORTS_SAVE )
 

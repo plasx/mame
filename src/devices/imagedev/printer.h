@@ -8,8 +8,8 @@
 
 ****************************************************************************/
 
-#ifndef MAME_DEVICES_IMAGEDEV_PRINTER_H
-#define MAME_DEVICES_IMAGEDEV_PRINTER_H
+#ifndef MAME_IMAGEDEV_PRINTER_H
+#define MAME_IMAGEDEV_PRINTER_H
 
 #pragma once
 
@@ -29,16 +29,16 @@ public:
 
 	auto online_callback() { return m_online_cb.bind(); }
 
-	// image-level overrides
-	virtual image_init_result call_load() override;
-	virtual image_init_result call_create(int format_type, util::option_resolution *format_options) override;
+	// device_image_interface implementation
+	virtual std::pair<std::error_condition, std::string> call_load() override;
+	virtual std::pair<std::error_condition, std::string> call_create(int format_type, util::option_resolution *format_options) override;
 	virtual void call_unload() override;
 
-	// image device
 	virtual bool is_readable()  const noexcept override { return false; }
 	virtual bool is_writeable() const noexcept override { return true; }
 	virtual bool is_creatable() const noexcept override { return true; }
 	virtual bool is_reset_on_load() const noexcept override { return false; }
+	virtual bool support_command_line_image_creation() const noexcept override { return true; }
 	virtual const char *file_extensions() const noexcept override { return "prn"; }
 	virtual const char *image_type_name() const noexcept override { return "printout"; }
 	virtual const char *image_brief_type_name() const noexcept override { return "prin"; }
@@ -51,8 +51,8 @@ public:
 	void output(uint8_t data);
 
 protected:
-	// device-level overrides
-	virtual void device_start() override;
+	// device_t implementation
+	virtual void device_start() override ATTR_COLD;
 
 	devcb_write_line m_online_cb;
 };
@@ -61,4 +61,4 @@ protected:
 // device type definition
 DECLARE_DEVICE_TYPE(PRINTER, printer_image_device)
 
-#endif // MAME_DEVICES_IMAGEDEV_PRINTER_H
+#endif // MAME_IMAGEDEV_PRINTER_H

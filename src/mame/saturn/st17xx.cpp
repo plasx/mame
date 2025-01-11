@@ -37,10 +37,11 @@
 
 #include "emu.h"
 #include "cpu/arm7/arm7.h"
-#include "cpu/arm7/arm7core.h"
 #include "emupal.h"
 #include "screen.h"
 
+
+namespace {
 
 #define SCREEN_TAG "screen"
 
@@ -53,11 +54,11 @@ public:
 	void st17xx(machine_config &config);
 
 private:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
-	void cpu_map(address_map &map);
+	void cpu_map(address_map &map) ATTR_COLD;
 };
 
 /* Memory Maps */
@@ -179,16 +180,19 @@ ROM_START( st1714 )
 	ROM_LOAD32_DWORD( "st1714.bin", 0x000000, 0x200000, CRC(08fc0a1b) SHA1(74dfd5595e1ab45fb9aff50a6c365fd9c9b33c33) )
 ROM_END
 
+} // anonymous namespace
+
+
 /* System Drivers */
 
 //    YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT   CLASS          INIT        COMPANY   FULLNAME                       FLAGS
-CONS( 200?, st1700h, 0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1700 (headphone version)", MACHINE_IS_SKELETON )
-CONS( 200?, st1701,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1701",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1702,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1702",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1703,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1703",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1704,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1704",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1705,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1705",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1706,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1706",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1707,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1707",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1708,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1708",                     MACHINE_IS_SKELETON )
-CONS( 200?, st1714,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1714",                     MACHINE_IS_SKELETON )
+CONS( 200?, st1700h, 0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1700 (headphone version)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1701,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1701",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1702,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1702",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1703,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1703",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1704,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1704",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1705,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1705",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1706,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1706",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1707,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1707",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1708,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1708",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, st1714,  0,      0,      st17xx,  st17xx, st17xx_state,  empty_init, "Saturn", "ST-1714",                     MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

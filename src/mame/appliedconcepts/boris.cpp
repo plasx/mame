@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Sean Riddle
-/******************************************************************************
+/*******************************************************************************
 
 Applied Concepts Boris (electronic chess computer)
 
@@ -16,18 +16,19 @@ There's also an updated revision, identifiable by the startup message "Boris awa
 your move"(same as Boris Master) instead of "Boris plays black".
 
 Boris Master included a battery, RESET was renamed to MEMORY. 2 known versions:
-one with C10617/C10617 ROMs(same as Boris rev. 01), and one with a single 4KB
+one with C10617/C10618 ROMs(same as Boris rev. 01), and one with a single 4KB
 ROM labeled 007-7027-00.
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
+
 #include "cpu/f8/f8.h"
 #include "machine/f3853.h"
 #include "video/pwm.h"
 
 // internal artwork
-#include "aci_boris.lh" // clickable
+#include "aci_boris.lh"
 
 
 namespace {
@@ -47,8 +48,8 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(reset_switch) { update_reset(newval); }
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	// devices/pointers
@@ -56,8 +57,11 @@ private:
 	required_device<pwm_display_device> m_display;
 	required_ioport_array<4> m_inputs;
 
-	void main_map(address_map &map);
-	void main_io(address_map &map);
+	u8 m_io[2] = { };
+	u8 m_4042 = 0;
+
+	void main_map(address_map &map) ATTR_COLD;
+	void main_io(address_map &map) ATTR_COLD;
 
 	void update_reset(ioport_value state);
 
@@ -65,9 +69,6 @@ private:
 	void mux_w(u8 data);
 	void digit_w(u8 data);
 	u8 input_r();
-
-	u8 m_io[2] = { };
-	u8 m_4042 = 0;
 };
 
 void boris_state::machine_start()
@@ -94,9 +95,9 @@ void boris_state::update_reset(ioport_value state)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 // MK3850 ports/TTL
 
@@ -140,15 +141,15 @@ void boris_state::digit_w(u8 data)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void boris_state::main_map(address_map &map)
 {
 	map.global_mask(0x0fff);
 	map(0x0000, 0x0bff).rom();
-	map(0x0c00, 0x0fff).ram();
+	map(0x0c00, 0x0cff).mirror(0x300).ram();
 }
 
 void boris_state::main_io(address_map &map)
@@ -160,9 +161,9 @@ void boris_state::main_io(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( boris )
 	PORT_START("IN.0")
@@ -190,18 +191,18 @@ static INPUT_PORTS_START( boris )
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_ENTER_PAD) PORT_NAME("Enter")
 
 	PORT_START("RESET")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_CODE(KEYCODE_F1) PORT_TOGGLE PORT_CHANGED_MEMBER(DEVICE_SELF, boris_state, reset_switch, 0) PORT_NAME("Reset Switch")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_CODE(KEYCODE_F1) PORT_TOGGLE PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(boris_state::reset_switch), 0) PORT_NAME("Reset Switch")
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void boris_state::boris(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	F8(config, m_maincpu, 2_MHz_XTAL); // MK3850
 	m_maincpu->set_addrmap(AS_PROGRAM, &boris_state::main_map);
 	m_maincpu->set_addrmap(AS_IO, &boris_state::main_io);
@@ -210,7 +211,7 @@ void boris_state::boris(machine_config &config)
 	f3853_device &smi(F3853(config, "smi", 2_MHz_XTAL));
 	smi.int_req_callback().set_inputline("maincpu", F8_INPUT_LINE_INT_REQ);
 
-	/* video hardware */
+	// video hardware
 	PWM_DISPLAY(config, m_display).set_size(8, 16);
 	m_display->set_segmask(0xff, 0xffff);
 	m_display->set_bri_levels(0.05);
@@ -219,9 +220,9 @@ void boris_state::boris(machine_config &config)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( boris )
 	ROM_REGION( 0x1000, "maincpu", 0 )
@@ -239,10 +240,10 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME    PARENT CMP MACHINE  INPUT  CLASS        INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1978, boris,  0,      0, boris,   boris, boris_state, empty_init, "Applied Concepts", "Boris (rev. 01)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW | MACHINE_CLICKABLE_ARTWORK ) // "Boris awaits your move"
-CONS( 1978, borisa, boris,  0, boris,   boris, boris_state, empty_init, "Applied Concepts", "Boris (rev. 00)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW | MACHINE_CLICKABLE_ARTWORK ) // "Boris plays black"
+//    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  CLASS        INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1978, boris,  0,      0,      boris,   boris, boris_state, empty_init, "Applied Concepts", "Boris (rev. 01)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW ) // "Boris awaits your move"
+SYST( 1978, borisa, boris,  0,      boris,   boris, boris_state, empty_init, "Applied Concepts", "Boris (rev. 00)", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW ) // "Boris plays black"

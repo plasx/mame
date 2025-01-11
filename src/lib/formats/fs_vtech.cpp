@@ -4,7 +4,10 @@
 // Management of VTech images
 
 #include "fs_vtech.h"
+#include "fsblk.h"
 #include "vt_dsk.h"
+
+#include "multibyte.h"
 
 #include <stdexcept>
 
@@ -16,7 +19,7 @@ namespace fs { const vtech_image VTECH; }
 // Filesystem has no subdirectories.
 //
 // Track 0 sectors 0-14 have the file names.  16 bytes/entry
-//   offset 0  : File type 'T' (basic) or 'B' (binary)
+//   offset 0  : File type 'T' (basic), 'B' (binary), or some other letter (application-specific)
 //   offset 1  : 0x3a
 //   offset 2-9: File name
 //   offset a  : Track number of first file sector
@@ -52,7 +55,7 @@ public:
 
 private:
 	meta_data file_metadata(const u8 *entry);
-	std::tuple<fsblk_t::block_t, u32> file_find(std::string name);
+	std::tuple<fsblk_t::block_t, u32> file_find(std::string_view name);
 	std::vector<std::pair<u8, u8>> allocate_blocks(u32 count);
 	void free_blocks(const std::vector<std::pair<u8, u8>> &blocks);
 	u32 free_block_count();
@@ -69,10 +72,9 @@ const char *vtech_image::description() const
 	return "VTech (Laser 200/300)";
 }
 
-void vtech_image::enumerate_f(floppy_enumerator &fe, u32 form_factor, const std::vector<u32> &variants) const
+void vtech_image::enumerate_f(floppy_enumerator &fe) const
 {
-	if(has(form_factor, variants, floppy_image::FF_525, floppy_image::SSSD))
-		fe.add(FLOPPY_VTECH_BIN_FORMAT, 163840, "vtech", "VTech");
+	fe.add(FLOPPY_VTECH_BIN_FORMAT, floppy_image::FF_525, floppy_image::SSSD, 163840, "vtech", "VTech");
 }
 
 std::unique_ptr<filesystem_t> vtech_image::mount(fsblk_t &blockdev) const
@@ -112,7 +114,9 @@ std::vector<meta_description> vtech_image::file_meta_description() const
 	res.emplace_back(meta_description(meta_name::name, "", false, [](const meta_value &m) { return m.as_string().size() <= 8; }, "File name, 8 chars"));
 	res.emplace_back(meta_description(meta_name::loading_address, 0x7ae9, false, [](const meta_value &m) { return m.as_number() < 0x10000; }, "Loading address of the file"));
 	res.emplace_back(meta_description(meta_name::length, 0, true, nullptr, "Size of the file in bytes"));
-	res.emplace_back(meta_description(meta_name::basic, true, true, nullptr, "Basic file"));
+	res.emplace_back(meta_description(meta_name::file_type, "T", true,
+		[](const meta_value &m) { return m.as_string().size() == 1 && m.as_string()[0] >= 'A' && m.as_string()[0] <= 'Z'; },
+		"File type (e.g. T = text, B = binary)"));
 	return res;
 }
 
@@ -141,26 +145,26 @@ meta_data vtech_impl::file_metadata(const u8 *entry)
 	meta_data res;
 
 	res.set(meta_name::name, trim_end_spaces(rstr(entry+2, 8)));
-	res.set(meta_name::basic, entry[0] == 'T');
-	res.set(meta_name::loading_address, r16l(entry + 0xc));
-	res.set(meta_name::length, ((r16l(entry + 0xe) - r16l(entry + 0xc) + 1) & 0xffff));
+	res.set(meta_name::file_type, std::string{ char(entry[0]) });
+	res.set(meta_name::loading_address, get_u16le(entry + 0xc));
+	res.set(meta_name::length, (get_u16le(entry + 0xe) - get_u16le(entry + 0xc)) & 0xffff);
 
 	return res;
 }
 
-std::tuple<fsblk_t::block_t, u32> vtech_impl::file_find(std::string name)
+std::tuple<fsblk_t::block_t, u32> vtech_impl::file_find(std::string_view name)
 {
 	for(int sect = 0; sect != 14; sect++) {
 		auto bdir = m_blockdev.get(sect);
 		for(u32 i = 0; i != 8; i ++) {
 			u32 off = i*16;
 			u8 type = bdir.r8(off);
-			if(type != 'T' && type != 'B')
+			if(type < 'A' || type > 'Z')
 				continue;
 			if(bdir.r8(off+1) != ':')
 				continue;
 			if(trim_end_spaces(bdir.rstr(off+2, 8)) == name) {
-				return std::make_tuple(bdir, i);
+				return std::make_tuple(bdir, off);
 			}
 		}
 	}
@@ -185,12 +189,12 @@ err_t vtech_impl::metadata_change(const std::vector<std::string> &path, const me
 		return ERR_NOT_FOUND;
 
 	auto [bdir, off] = file_find(path[0]);
-	if(!off)
+	if(off == 0xffffffff)
 		return ERR_NOT_FOUND;
 
 	u8 *entry = bdir.data() + off;
-	if(meta.has(meta_name::basic))
-		w8  (entry+0x0, meta.get_flag(meta_name::basic) ? 'T' : 'B');
+	if(meta.has(meta_name::file_type))
+		entry[0x0] = meta.get_string(meta_name::file_type)[0];
 	if(meta.has(meta_name::name)) {
 		std::string name = meta.get_string(meta_name::name);
 		name.resize(8, ' ');
@@ -198,9 +202,9 @@ err_t vtech_impl::metadata_change(const std::vector<std::string> &path, const me
 	}
 	if(meta.has(meta_name::loading_address)) {
 		u16 new_loading = meta.get_number(meta_name::loading_address);
-		u16 new_end = r16l(entry + 0xe) - r16l(entry + 0xc) + new_loading;
-		w16l(entry + 0xc, new_loading);
-		w16l(entry + 0xe, new_end);
+		u16 new_end = get_u16le(entry + 0xe) - get_u16le(entry + 0xc) + new_loading;
+		put_u16le(entry + 0xc, new_loading);
+		put_u16le(entry + 0xe, new_end);
 	}
 
 	return ERR_OK;
@@ -222,7 +226,7 @@ std::pair<err_t, std::vector<dir_entry>> vtech_impl::directory_contents(const st
 		for(u32 i = 0; i != 8; i ++) {
 			u32 off = i*16;
 			u8 type = bdir.r8(off);
-			if(type != 'T' && type != 'B')
+			if(type < 'A' || type > 'Z')
 				continue;
 			if(bdir.r8(off+1) != ':')
 				continue;
@@ -239,7 +243,7 @@ err_t vtech_impl::rename(const std::vector<std::string> &opath, const std::vecto
 		return ERR_NOT_FOUND;
 
 	auto [bdir, off] = file_find(opath[0]);
-	if(!off)
+	if(off == 0xffffffff)
 		return ERR_NOT_FOUND;
 
 	std::string name = npath[0];
@@ -270,13 +274,13 @@ err_t vtech_impl::file_create(const std::vector<std::string> &path, const meta_d
 				std::string fname = meta.get_string(meta_name::name, "");
 				fname.resize(8, ' ');
 
-				bdir.w8  (off+0x0, meta.get_flag(meta_name::basic, true) ? 'T' : 'B');
+				bdir.w8  (off+0x0, meta.get_string(meta_name::file_type, "T")[0]);
 				bdir.w8  (off+0x1, ':');
 				bdir.wstr(off+0x2, fname);
 				bdir.w8  (off+0xa, 0x00);
 				bdir.w8  (off+0xb, 0x00);
 				bdir.w16l(off+0xc, meta.get_number(meta_name::loading_address, 0x7ae9));
-				bdir.w16l(off+0xe, bdir.r16l(off+0xc) - 1); // Size 0 initially
+				bdir.w16l(off+0xe, bdir.r16l(off+0xc)); // Size 0 initially
 				return ERR_OK;
 			}
 		}
@@ -299,7 +303,7 @@ std::pair<err_t, std::vector<u8>> vtech_impl::file_read(const std::vector<std::s
 
 	u8 track = entry[0xa];
 	u8 sector = entry[0xb];
-	int len = ((r16l(entry + 0xe) - r16l(entry + 0xc)) & 0xffff) + 1;
+	int len = (get_u16le(entry + 0xe) - get_u16le(entry + 0xc)) & 0xffff;
 
 	data.resize(len, 0);
 	int pos = 0;
@@ -329,7 +333,7 @@ err_t vtech_impl::file_write(const std::vector<std::string> &path, const std::ve
 
 	u8 *entry = bdir.data() + off;
 
-	u32 cur_len = ((r16l(entry + 0xe) - r16l(entry + 0xc) + 1) & 0xffff);
+	u32 cur_len = (get_u16le(entry + 0xe) - get_u16le(entry + 0xc)) & 0xffff;
 	u32 new_len = data.size();
 	if(new_len > 65535)
 		new_len = 65535;
@@ -368,13 +372,13 @@ err_t vtech_impl::file_write(const std::vector<std::string> &path, const std::ve
 			dblk.w16l(126, 0);
 	}
 
-	u16 end_address = (r16l(entry + 0xc) + data.size() - 1) & 0xffff;
-	w16l(entry + 0xe, end_address);
+	u16 end_address = (get_u16le(entry + 0xc) + data.size()) & 0xffff;
+	put_u16le(entry + 0xe, end_address);
 	if(need_ns) {
-		w8(entry + 0xa, blocks[0].first);
-		w8(entry + 0xb, blocks[0].second);
+		entry[0xa] = blocks[0].first;
+		entry[0xb] = blocks[0].second;
 	} else
-		w16l(entry + 0xa, 0);
+		put_u16le(entry + 0xa, 0);
 
 	return ERR_OK;
 }

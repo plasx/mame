@@ -85,8 +85,12 @@
 #include "cpu/z80/z80.h"
 #include "speaker.h"
 
-#define LOG_COMM 0
-#define LOG_EXTERN 0
+#define LOG_WARN   (1U << 1)
+#define LOG_COMM   (1U << 2)
+#define LOG_EXTERN (1U << 3)
+
+#define VERBOSE    LOG_WARN
+#include "logmacro.h"
 
 /*************************************
  *
@@ -94,32 +98,32 @@
  *
  *************************************/
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit0_2_w)
+void leland_80186_sound_device::pit0_2_w(int state)
 {
 	set_clock_line(2, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit1_0_w)
+void leland_80186_sound_device::pit1_0_w(int state)
 {
 	set_clock_line(3, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit1_1_w)
+void leland_80186_sound_device::pit1_1_w(int state)
 {
 	set_clock_line(4, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::pit1_2_w)
+void leland_80186_sound_device::pit1_2_w(int state)
 {
 	set_clock_line(5, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::i80186_tmr0_w)
+void leland_80186_sound_device::i80186_tmr0_w(int state)
 {
 	set_clock_line(6, state);
 }
 
-WRITE_LINE_MEMBER(leland_80186_sound_device::i80186_tmr1_w)
+void leland_80186_sound_device::i80186_tmr1_w(int state)
 {
 	if (m_ext_base != nullptr)
 	{
@@ -132,7 +136,7 @@ WRITE_LINE_MEMBER(leland_80186_sound_device::i80186_tmr1_w)
 			}
 		}
 	}
-	set_clock_line(7, state);
+	set_clock_line(3, state);
 }
 
 void leland_80186_sound_device::device_add_mconfig(machine_config &config)
@@ -313,6 +317,7 @@ void leland_80186_sound_device::device_start()
 	save_item(NAME(m_clock_tick));
 	save_item(NAME(m_sound_command));
 	save_item(NAME(m_sound_response));
+	save_item(NAME(m_response_sync));
 	save_item(NAME(m_ext_start));
 	save_item(NAME(m_ext_stop));
 	save_item(NAME(m_ext_active));
@@ -324,6 +329,7 @@ void leland_80186_sound_device::device_start()
 	m_clock_tick = 0;
 	m_sound_command = 0;
 	m_sound_response = 0;
+	m_response_sync = false;
 	m_ext_start = 0;
 	m_ext_stop = 0;
 	m_ext_active = 0;
@@ -334,9 +340,11 @@ void leland_80186_sound_device::device_reset()
 	m_last_control = 0xf8;
 	m_clock_active = 0;
 	m_clock_tick = 0;
+	m_response_sync = false;
 	m_ext_start = 0;
 	m_ext_stop = 0;
 	m_ext_active = 0;
+
 	if (m_type == TYPE_WSF)
 		m_dacvol[3]->write(0xff);  //TODO: determine how to set this if at all
 }
@@ -415,6 +423,8 @@ void leland_80186_sound_device::peripheral_ctrl(offs_t offset, u16 data)
 	}
 }
 
+
+
 /*************************************
  *
  *  External 80186 control
@@ -429,27 +439,24 @@ void leland_80186_sound_device::leland_80186_control_w(u8 data)
 		return;
 	m_last_control = data;
 
-	if (LOG_COMM)
-	{
-		logerror("%s:80186 control = %02X", machine().describe_context(), data);
-		if (!(data & 0x80)) logerror("  /RESET");
-		if (!(data & 0x40)) logerror("  ZNMI");
-		if (!(data & 0x20)) logerror("  INT0");
-		if (!(data & 0x10)) logerror("  /TEST");
-		if (!(data & 0x08)) logerror("  INT1");
-		logerror("\n");
-	}
+	LOGMASKED(LOG_COMM, "%s:80186 control = %02X%s%s%s%s%s\n",
+			machine().describe_context(), data,
+			(data & 0x80) ? "" : "  /RESET",
+			(data & 0x40) ? "" : "  ZNMI",
+			(data & 0x20) ? "" : "  INT0",
+			(data & 0x10) ? "" : "  /TEST",
+			(data & 0x08) ? "" : "  INT1");
 
 	/* /RESET */
 	m_audiocpu->set_input_line(INPUT_LINE_RESET, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	m_audiocpu->set_input_line(INPUT_LINE_TEST, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* /NMI */
-/*  If the master CPU doesn't get a response by the time it's ready to send
-    the next command, it uses an NMI to force the issue; unfortunately, this
-    seems to really screw up the sound system. It turns out it's better to
-    just wait for the original interrupt to occur naturally */
-/*  m_audiocpu->set_input_line(INPUT_LINE_NMI, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);*/
+	/*  If the master CPU doesn't get a response by the time it's ready to send
+	    the next command, it uses an NMI to force the issue; unfortunately, this
+	    seems to really screw up the sound system. It turns out it's better to
+	    just wait for the original interrupt to occur naturally */
+	//m_audiocpu->set_input_line(INPUT_LINE_NMI, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* INT0 */
 	m_audiocpu->int0_w(data & 0x20);
@@ -470,7 +477,7 @@ void leland_80186_sound_device::leland_80186_control_w(u8 data)
 
 void leland_80186_sound_device::command_lo_w(u8 data)
 {
-	if (LOG_COMM) logerror("%s:Write sound command latch lo = %02X\n", machine().describe_context(), data);
+	LOGMASKED(LOG_COMM, "%s:Write sound command latch lo = %02X\n", machine().describe_context(), data);
 	m_sound_command = (m_sound_command & 0xff00) | data;
 	m_soundlatch->write(m_sound_command);
 }
@@ -478,11 +485,10 @@ void leland_80186_sound_device::command_lo_w(u8 data)
 
 void leland_80186_sound_device::command_hi_w(u8 data)
 {
-	if (LOG_COMM) logerror("%s:Write sound command latch hi = %02X\n", machine().describe_context(), data);
+	LOGMASKED(LOG_COMM, "%s:Write sound command latch hi = %02X\n", machine().describe_context(), data);
 	m_sound_command = (m_sound_command & 0x00ff) | (data << 8);
 	m_soundlatch->write(m_sound_command);
 }
-
 
 
 
@@ -492,38 +498,23 @@ void leland_80186_sound_device::command_hi_w(u8 data)
  *
  *************************************/
 
-void leland_80186_sound_device::delayed_response_r(int param)
-{
-	int checkpc = param;
-	int pc = m_master->pc();
-	int oldaf = m_master->state_int(Z80_AF);
-
-	/* This is pretty cheesy, but necessary. Since the CPUs run in round-robin order,
-	   synchronizing on the write to this register from the slave side does nothing.
-	   In order to make sure the master CPU get the real response, we synchronize on
-	   the read. However, the value we returned the first time around may not be
-	   accurate, so after the system has synced up, we go back into the master CPUs
-	   state and put the proper value into the A register. */
-	if (pc == checkpc)
-	{
-		if (LOG_COMM) logerror("(Updated sound response latch to %02X)\n", m_sound_response);
-
-		oldaf = (oldaf & 0x00ff) | (m_sound_response << 8);
-		m_master->set_state_int(Z80_AF, oldaf);
-	}
-	else if(LOG_COMM)
-		logerror("ERROR: delayed_response_r - current PC = %04X, checkPC = %04X\n", pc, checkpc);
-}
-
-
 u8 leland_80186_sound_device::response_r()
 {
-	offs_t pc = m_master->pcbase();
+	if (!machine().side_effects_disabled())
+	{
+		/* This is pretty cheesy, but necessary. Since the CPUs run in round-robin order,
+		   synchronizing on the write to this register from the slave side does nothing.
+		   The usual trick with briefly setting perfect quantum on master CPU side write
+		   is also ineffective. In order to make sure the master CPU gets the real response,
+		   we force a synchronize on the read like this. */
+		if (!m_response_sync)
+			m_master->retry_access();
+		else
+			LOGMASKED(LOG_COMM, "%s:Read sound response latch = %02X\n", machine().describe_context(), m_sound_response);
 
-	if (LOG_COMM) logerror("%04X:Read sound response latch = %02X\n", pc, m_sound_response);
+		m_response_sync = !m_response_sync;
+	}
 
-	/* synchronize the response */
-	machine().scheduler().synchronize(timer_expired_delegate(FUNC(leland_80186_sound_device::delayed_response_r), this), pc + 2);
 	return m_sound_response;
 }
 
@@ -599,29 +590,29 @@ void leland_80186_sound_device::ataxx_dac_control(offs_t offset, u16 data, u16 m
 		{
 		case 0x04:
 			m_ext_active = 1;
-			if (LOG_EXTERN) logerror("External DAC active\n");
+			LOGMASKED(LOG_EXTERN, "External DAC active\n");
 			return;
 		case 0x05:
 			m_ext_active = 0;
-			if (LOG_EXTERN) logerror("External DAC inactive\n");
+			LOGMASKED(LOG_EXTERN, "External DAC inactive\n");
 			return;
 		case 0x06:
 			m_ext_start >>= 4;
 			COMBINE_DATA(&m_ext_start);
 			m_ext_start <<= 4;
-			if (LOG_EXTERN) logerror("External DAC start = %05X\n", m_ext_start);
+			LOGMASKED(LOG_EXTERN, "External DAC start = %05X\n", m_ext_start);
 			return;
 		case 0x07:
 			m_ext_stop >>= 4;
 			COMBINE_DATA(&m_ext_stop);
 			m_ext_stop <<= 4;
-			if (LOG_EXTERN) logerror("External DAC stop = %05X\n", m_ext_stop);
+			LOGMASKED(LOG_EXTERN, "External DAC stop = %05X\n", m_ext_stop);
 			return;
 		}
 		break;
 	}
 
-	logerror("%s:Unexpected peripheral write %d/%02X = %02X\n", machine().describe_context(), 5, offset, data);
+	LOGMASKED(LOG_WARN, "%s:Unexpected peripheral write %d/%02X = %02X\n", machine().describe_context(), 5, offset, data);
 }
 
 
@@ -652,7 +643,7 @@ u16 leland_80186_sound_device::peripheral_r(offs_t offset, u16 mem_mask)
 				return ((m_clock_active << 1) & 0x7e);
 
 		case 1:
-			if (LOG_COMM) logerror("%s:Read sound command latch = %02X\n", machine().describe_context(), m_soundlatch->read());
+			LOGMASKED(LOG_COMM, "%s:Read sound command latch = %02X\n", machine().describe_context(), m_soundlatch->read());
 			return m_soundlatch->read();
 
 		case 2:
@@ -677,11 +668,11 @@ u16 leland_80186_sound_device::peripheral_r(offs_t offset, u16 mem_mask)
 					return m_pit[2]->read(offset & 3);
 			}
 			else
-				logerror("%s:Unexpected peripheral read %d/%02X\n", machine().describe_context(), select, offset*2);
+				LOGMASKED(LOG_WARN, "%s:Unexpected peripheral read %d/%02X\n", machine().describe_context(), select, offset*2);
 			break;
 
 		default:
-			logerror("%s:Unexpected peripheral read %d/%02X\n", machine().describe_context(), select, offset*2);
+			LOGMASKED(LOG_WARN, "%s:Unexpected peripheral read %d/%02X\n", machine().describe_context(), select, offset*2);
 			break;
 	}
 	return 0xffff;
@@ -696,7 +687,7 @@ void leland_80186_sound_device::peripheral_w(offs_t offset, u16 data, u16 mem_ma
 	switch (select)
 	{
 		case 1:
-			if (LOG_COMM) logerror("%s:Write sound response latch = %02X\n", machine().describe_context(), data);
+			LOGMASKED(LOG_COMM, "%s:Write sound response latch = %02X\n", machine().describe_context(), data);
 			m_sound_response = data;
 			break;
 
@@ -734,7 +725,7 @@ void leland_80186_sound_device::peripheral_w(offs_t offset, u16 data, u16 mem_ma
 			break;
 
 		default:
-			logerror("%s:Unexpected peripheral write %d/%02X = %02X\n", machine().describe_context(), select, offset, data);
+			LOGMASKED(LOG_WARN, "%s:Unexpected peripheral write %d/%02X = %02X\n", machine().describe_context(), select, offset, data);
 			break;
 	}
 }

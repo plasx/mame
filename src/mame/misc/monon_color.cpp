@@ -64,13 +64,16 @@
 #include "cpu/m6502/m65ce02.h"
 #include "sound/dac.h"
 
-#define LOG_VDP (1U <<  1)
+#define LOG_VDP (1U << 1)
 #define LOG_MUSICMCUCOMMS (1U << 2)
 
 //#define VERBOSE     (LOG_VDP)
 #define VERBOSE     (0)
 
 #include "logmacro.h"
+
+
+namespace {
 
 class monon_color_state : public driver_device
 {
@@ -91,8 +94,8 @@ public:
 	void monon_color(machine_config &config);
 protected:
 	// driver_device overrides
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	// screen updates
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
@@ -126,7 +129,7 @@ private:
 
 	uint8_t m_curpal[0x800 * 3];
 
-	void music_mem(address_map &map);
+	void music_mem(address_map &map) ATTR_COLD;
 	uint8_t music_rts_r();
 
 	uint8_t in0_r();
@@ -153,7 +156,7 @@ private:
 		return m_cart->read();
 	}
 
-	DECLARE_WRITE_LINE_MEMBER(spidir_w)
+	void spidir_w(int state)
 	{
 		m_cart->dir_w(state);
 	}
@@ -985,5 +988,8 @@ ROM_START( mononcol )
 	ROM_FILL( 0x1ffc, 0x1, 0x00 )
 	ROM_FILL( 0x1ffd, 0x1, 0x20 )
 ROM_END
+
+} // anonymous namespace
+
 
 CONS( 2014, mononcol,    0,          0,  monon_color,  monon_color,    monon_color_state, empty_init,    "M&D",   "Monon Color", MACHINE_IMPERFECT_TIMING | MACHINE_IMPERFECT_GRAPHICS | MACHINE_IMPERFECT_SOUND )

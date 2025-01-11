@@ -21,6 +21,9 @@ not sure what the actual inputs / outputs would be on this, maybe just track pos
 #include "cpu/z80/z80.h"
 #include "machine/i8255.h"
 
+
+namespace {
+
 class ice_tbd_state : public driver_device
 {
 public:
@@ -32,11 +35,11 @@ public:
 	void ice_tbd(machine_config &config);
 
 private:
-	void ice_tbd_io_map(address_map &map);
-	void ice_tbd_map(address_map &map);
+	void ice_tbd_io_map(address_map &map) ATTR_COLD;
+	void ice_tbd_map(address_map &map) ATTR_COLD;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	required_device<cpu_device> m_maincpu;
 };
 
@@ -85,5 +88,7 @@ ROM_START( ice_tbd )
 	ROM_LOAD( "turbo-dr.ive", 0x0000, 0x4000, CRC(d7c79ac4) SHA1(a01d93411e604e36a3ced58063f2ab81e431b82a) )
 ROM_END
 
+} // anonymous namespace
 
-GAME( 1988, ice_tbd, 0, ice_tbd, ice_tbd, ice_tbd_state, empty_init, ROT0, "Innovative Creations in Entertainment", "Turbo Drive (ICE)", MACHINE_IS_SKELETON_MECHANICAL )
+
+GAME( 1988, ice_tbd, 0, ice_tbd, ice_tbd, ice_tbd_state, empty_init, ROT0, "Innovative Creations in Entertainment", "Turbo Drive (ICE)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK )

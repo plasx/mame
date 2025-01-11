@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
 /* Sega CD / Mega CD */
-#ifndef MAME_MACHINE_MEGACD_H
-#define MAME_MACHINE_MEGACD_H
+#ifndef MAME_SEGA_MEGACD_H
+#define MAME_SEGA_MEGACD_H
 
 #pragma once
 
@@ -101,13 +101,13 @@ public:
 	void font_color_w(uint8_t data);
 	uint16_t font_converted_r(offs_t offset);
 
-	void segacd_map(address_map &map);
-	void segacd_pcm_map(address_map &map);
+	void segacd_map(address_map &map) ATTR_COLD;
+	void segacd_pcm_map(address_map &map) ATTR_COLD;
 protected:
 	sega_segacd_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	required_device<cpu_device> m_scdcpu;
 	required_device<cpu_device> m_hostcpu;
@@ -190,8 +190,8 @@ protected:
 
 	uint8_t read_pixel_from_stampmap(bitmap_ind16* srcbitmap, int x, int y);
 
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	TIMER_DEVICE_CALLBACK_MEMBER( dma_timer_callback );
 	IRQ_CALLBACK_MEMBER(segacd_sub_int_callback);
@@ -226,4 +226,4 @@ DECLARE_DEVICE_TYPE(SEGA_SEGACD_US,     sega_segacd_us_device)
 DECLARE_DEVICE_TYPE(SEGA_SEGACD_JAPAN,  sega_segacd_japan_device)
 DECLARE_DEVICE_TYPE(SEGA_SEGACD_EUROPE, sega_segacd_europe_device)
 
-#endif // MAME_MACHINE_MEGACD_H
+#endif // MAME_SEGA_MEGACD_H

@@ -1,13 +1,13 @@
 // license:BSD-3-Clause
 // copyright-holders:Sandro Ronco
-/**********************************************************************
+/*******************************************************************************
 
     Mephisto Modular Sensors Board
 
-*********************************************************************/
+*******************************************************************************/
 
-#ifndef MAME_MACHINE_MMBOARD_H
-#define MAME_MACHINE_MMBOARD_H
+#ifndef MAME_HEGENERGLASER_MMBOARD_H
+#define MAME_HEGENERGLASER_MMBOARD_H
 
 #pragma once
 
@@ -36,8 +36,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	void set_config(machine_config &config, sensorboard_device::sb_type board_type);
 	void refresh_leds_w(offs_t offset, u8 data);
@@ -49,8 +49,8 @@ protected:
 
 	attotime m_sensordelay;
 	bool m_disable_leds;
-	u8 m_led_data = 0;
-	u8 m_mux = 0;
+	u8 m_led_data;
+	u8 m_mux;
 };
 
 
@@ -64,7 +64,7 @@ public:
 
 protected:
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 
@@ -78,7 +78,7 @@ public:
 
 protected:
 	// optional information overrides
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 };
 
 
@@ -87,4 +87,4 @@ DECLARE_DEVICE_TYPE(MEPHISTO_SENSORS_BOARD, mephisto_sensors_board_device)
 DECLARE_DEVICE_TYPE(MEPHISTO_BUTTONS_BOARD, mephisto_buttons_board_device)
 
 
-#endif // MAME_MACHINE_MMBOARD_H
+#endif // MAME_HEGENERGLASER_MMBOARD_H

@@ -101,9 +101,9 @@ public:
 	void bigevglf(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	// memory pointers
@@ -160,15 +160,13 @@ private:
 	TIMER_CALLBACK_MEMBER(deferred_ls74_w);
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void main_portmap(address_map &map);
-	void sub_portmap(address_map &map);
-	void main_map(address_map &map);
-	void sound_map(address_map &map);
-	void sub_map(address_map &map);
+	void main_portmap(address_map &map) ATTR_COLD;
+	void sub_portmap(address_map &map) ATTR_COLD;
+	void main_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
+	void sub_map(address_map &map) ATTR_COLD;
 };
 
-
-// video
 
 void bigevglf_state::palette_w(offs_t offset, uint8_t data)
 {
@@ -241,8 +239,6 @@ uint32_t bigevglf_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 void bigevglf_state::banking_w(uint8_t data)
 {
@@ -595,7 +591,7 @@ void bigevglf_state::bigevglf(machine_config &config)
 	YM2149(config, "aysnd", 8_MHz_XTAL / 4).add_route(ALL_OUTPUTS, "mono", 0.15); // divider not verified
 
 	MSM5232(config, m_msm, 8_MHz_XTAL / 4); // divider not verified
-	m_msm->set_capacitors(0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6, 0.65e-6); // 0.65 (???) uF capacitors
+	m_msm->set_capacitors(1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6, 1e-6); // 1 uF capacitors ?
 	m_msm->add_route(0, "mono", 1.0);   // pin 28  2'-1
 	m_msm->add_route(1, "mono", 1.0);   // pin 29  4'-1
 	m_msm->add_route(2, "mono", 1.0);   // pin 30  8'-1

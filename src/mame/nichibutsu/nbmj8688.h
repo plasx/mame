@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Takahiro Nogi
-#ifndef MAME_INCLUDES_NBMJ8688_H
-#define MAME_INCLUDES_NBMJ8688_H
+#ifndef MAME_NICHIBUTSU_NBMJ8688_H
+#define MAME_NICHIBUTSU_NBMJ8688_H
 
 #pragma once
 
@@ -136,24 +136,24 @@ private:
 	void common_video_start();
 	void postload();
 
-	void barline_io_map(address_map &map);
-	void bikkuri_map(address_map &map);
-	void bikkuri_io_map(address_map &map);
-	void crystalg_io_map(address_map &map);
-	void iemoto_io_map(address_map &map);
-	void kaguya_io_map(address_map &map);
-	void mjgaiden_io_map(address_map &map);
-	void mjsikaku_io_map(address_map &map);
-	void mjsikaku_map(address_map &map);
-	void mmsikaku_io_map(address_map &map);
-	void ojousan_map(address_map &map);
-	void otonano_io_map(address_map &map);
-	void p16bit_LCD_io_map(address_map &map);
-	void secolove_io_map(address_map &map);
-	void secolove_map(address_map &map);
-	void seiha_io_map(address_map &map);
+	void barline_io_map(address_map &map) ATTR_COLD;
+	void bikkuri_map(address_map &map) ATTR_COLD;
+	void bikkuri_io_map(address_map &map) ATTR_COLD;
+	void crystalg_io_map(address_map &map) ATTR_COLD;
+	void iemoto_io_map(address_map &map) ATTR_COLD;
+	void kaguya_io_map(address_map &map) ATTR_COLD;
+	void mjgaiden_io_map(address_map &map) ATTR_COLD;
+	void mjsikaku_io_map(address_map &map) ATTR_COLD;
+	void mjsikaku_map(address_map &map) ATTR_COLD;
+	void mmsikaku_io_map(address_map &map) ATTR_COLD;
+	void ojousan_map(address_map &map) ATTR_COLD;
+	void otonano_io_map(address_map &map) ATTR_COLD;
+	void p16bit_LCD_io_map(address_map &map) ATTR_COLD;
+	void secolove_io_map(address_map &map) ATTR_COLD;
+	void secolove_map(address_map &map) ATTR_COLD;
+	void seiha_io_map(address_map &map) ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(clear_busy_flag);
 };
 
-#endif // MAME_INCLUDES_NBMJ8688_H
+#endif // MAME_NICHIBUTSU_NBMJ8688_H

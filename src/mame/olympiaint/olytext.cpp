@@ -30,6 +30,8 @@
 #include "screen.h"
 
 
+namespace {
+
 //**************************************************************************
 //  TYPE DEFINITIONS
 //**************************************************************************
@@ -49,15 +51,15 @@ public:
 	void olytext(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	void keyboard_put(u8 data);
 
-	void mem_map(address_map &map);
-	void io_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
+	void io_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 //  required_device<floppy_connector> m_fdd0;
@@ -185,6 +187,8 @@ ROM_START( olytext )
 	ROM_REGION( 0x1000, "chargen", 0) // this is firmware for the NS405 cpu
 	ROM_LOAD( "1220-041_33702.bin", 0x0000, 0x1000, CRC(a6d39c2a) SHA1(b7a4c65edc7d46d1ab8b0b3aa52141c61c66bf32) )
 ROM_END
+
+} // anonymous namespace
 
 
 //**************************************************************************

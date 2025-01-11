@@ -144,7 +144,7 @@ Changes:
 #include "emu.h"
 
 #include "bus/nes_ctrl/zapper_sensor.h"
-#include "cpu/m6502/n2a03.h"
+#include "cpu/m6502/rp2a03.h"
 #include "cpu/z80/z80.h"
 #include "machine/nvram.h"
 #include "machine/watchdog.h"
@@ -184,19 +184,19 @@ protected:
 	{
 	}
 
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	template <u8 Side> void sprite_dma_w(address_space &space, u8 data);
 	template <u8 Side> void vsnes_coin_counter_w(offs_t offset, u8 data);
 	template <u8 Side> u8 vsnes_coin_counter_r(offs_t offset);
 	template <u8 Side> void vsnes_in0_w(u8 data);
 	template <u8 Side> u8 vsnes_in0_r();
 	template <u8 Side> u8 vsnes_in1_r();
 
-	void vsnes_cpu1_map(address_map &map);
-	void vsnes_cpu2_map(address_map &map);
-	void vsnes_ppu1_map(address_map &map);
-	void vsnes_ppu2_map(address_map &map);
+	void vsnes_cpu1_map(address_map &map) ATTR_COLD;
+	void vsnes_cpu2_map(address_map &map) ATTR_COLD;
+	void vsnes_ppu1_map(address_map &map) ATTR_COLD;
+	void vsnes_ppu2_map(address_map &map) ATTR_COLD;
 
 	void init_prg_banking();
 	void prg32(int bank);
@@ -218,11 +218,11 @@ protected:
 
 	memory_bank_array_creator<4> m_prg_banks;
 	memory_view m_prg_view;
-	int m_prg_chunks = 0;
+	u32 m_prg_chunks = 0;
 
 	memory_bank_array_creator<8> m_chr_banks;
 	memory_view m_chr_view;
-	int m_chr_chunks = 0;
+	u32 m_chr_chunks = 0;
 
 	bool m_has_gun = false;
 
@@ -233,9 +233,9 @@ private:
 	optional_ioport m_gunx;
 	optional_ioport m_guny;
 
-	int m_coin = 0;
-	int m_input_latch[4]{};
-	int m_input_strobe[2]{};
+	u8 m_coin = 0;
+	u32 m_input_latch[4]{};
+	u8 m_input_strobe[2]{};
 };
 
 class vs_uni_state : public vs_base_state
@@ -267,35 +267,35 @@ public:
 	void init_rbibb();
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
-	void vsnormal_vrom_banking(u8 data);
-	void vskonami_rom_banking(offs_t offset, u8 data);
+	void vsnormal_vrom_banking_w(u8 data);
+	void vskonami_rom_banking_w(offs_t offset, u8 data);
 	void vsgshoe_gun_in0_w(u8 data);
-	void drmario_rom_banking(offs_t offset, u8 data);
-	void vsvram_rom_banking(u8 data);
-	void vs108_rom_banking(offs_t offset, u8 data);
+	void drmario_rom_banking_w(offs_t offset, u8 data);
+	void vsvram_rom_banking_w(u8 data);
+	void vs108_rom_banking_w(offs_t offset, u8 data);
 	u8 rbibb_prot_r(offs_t offset);
 	u8 supxevs_prot_1_r();
 	u8 supxevs_prot_2_r();
 	u8 supxevs_prot_3_r();
 	u8 supxevs_prot_4_r();
 	u8 tkoboxng_prot_r(offs_t offset);
-	void sunsoft3_rom_banking(offs_t offset, u8 data);
+	void sunsoft3_rom_banking_w(offs_t offset, u8 data);
 	void set_bnglngby_irq_w(u8 data);
 	u8 set_bnglngby_irq_r();
 
 	void v_set_videorom_bank(int start, int count, int vrom_start_bank);
 
-	int m_mmc1_shiftreg = 0;
-	int m_mmc1_shiftcount = 0;
-	int m_mmc1_prg16k = 0;
-	int m_mmc1_switchlow = 0;
-	int m_mmc1_chr4k = 0;
-	int m_108_reg = 0;
-	int m_prot_index = 0;
-	int m_ret = 0;
+	u8 m_mmc1_shiftreg = 0;
+	u8 m_mmc1_shiftcount = 0;
+	bool m_mmc1_prg16k = false;
+	u8 m_mmc1_switchlow = 0;
+	bool m_mmc1_chr4k = false;
+	u8 m_108_reg = 0;
+	u8 m_prot_index = 0;
+	u8 m_ret = 0;
 };
 
 class vs_dual_state : public vs_base_state
@@ -310,10 +310,10 @@ public:
 	void init_vsdual();
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
-	template <u8 Side> void vsdual_vrom_banking(u8 data);
+	template <u8 Side> void vsdual_vrom_banking_w(u8 data);
 };
 
 class vs_smbbl_state : public vs_base_state
@@ -329,7 +329,7 @@ public:
 	void vs_smbbl(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	void smbbl_6502_sn_w(offs_t offset, u8 data);
@@ -339,30 +339,21 @@ private:
 	void smbbl_scanline_cb(int scanline, bool vblank, bool blanked);
 	u8 smbbl_ppu_data_r();
 
-	void smbbl_6502_map(address_map &map);
-	void smbbl_z80_map(address_map &map);
-	void smbbl_ppu_map(address_map &map);
+	void smbbl_6502_map(address_map &map) ATTR_COLD;
+	void smbbl_z80_map(address_map &map) ATTR_COLD;
+	void smbbl_ppu_map(address_map &map) ATTR_COLD;
 
 	required_device<sn76489_device> m_sn1;
 	required_device<sn76489_device> m_sn2;
 
 	u8 m_bootleg_sound_offset = 0;
 	u8 m_bootleg_sound_data = 0;
-	int m_bootleg_latched_scanline = 0;
+	s32 m_bootleg_latched_scanline = 0;
 };
 
 
 //******************************************************************************
 
-
-template <u8 Side>
-void vs_base_state::sprite_dma_w(address_space &space, u8 data)
-{
-	if (Side == MAIN)
-		m_ppu1->spriteram_dma(space, data & 0x07);
-	else
-		m_ppu2->spriteram_dma(space, data & 0x07);
-}
 
 template <u8 Side>
 void vs_base_state::vsnes_coin_counter_w(offs_t offset, u8 data)
@@ -379,7 +370,8 @@ template <u8 Side>
 u8 vs_base_state::vsnes_coin_counter_r(offs_t offset)
 {
 	// reads effectively write MSB of address (via open bus) to coin counter
-	machine().bookkeeping().coin_counter_w(Side, BIT(offset, 8));
+	if (!machine().side_effects_disabled())
+		machine().bookkeeping().coin_counter_w(Side, BIT(offset, 8));
 
 	// only for platoon
 	return m_coin;
@@ -392,8 +384,8 @@ void vs_base_state::vsnes_in0_w(u8 data)
 	if (m_input_strobe[Side] & ~data & 1)
 	{
 		// load up the latches
-		int p1 = 2 * Side;
-		int p2 = p1 + 1;
+		const u8 p1 = 2 * Side;
+		const u8 p2 = p1 + 1;
 		m_input_latch[p1] = m_in[p1]->read();
 		m_input_latch[p2] = m_in[p2]->read();
 
@@ -407,17 +399,21 @@ void vs_base_state::vsnes_in0_w(u8 data)
 template <u8 Side>
 u8 vs_base_state::vsnes_in0_r()
 {
-	int p1 = 2 * Side;
+	const u8 p1 = 2 * Side;
 
-	if (m_input_strobe[Side] & 1)
+	if (!machine().side_effects_disabled())
 	{
-		m_input_latch[p1] = m_in[p1]->read();
-		if (m_has_gun && m_sensor->detect_light(m_gunx->read(), m_guny->read()))
-			m_input_latch[p1] |= 0x40;
+		if (m_input_strobe[Side] & 1)
+		{
+			m_input_latch[p1] = m_in[p1]->read();
+			if (m_has_gun && m_sensor->detect_light(m_gunx->read(), m_guny->read()))
+				m_input_latch[p1] |= 0x40;
+		}
 	}
 
-	int ret = m_input_latch[p1] & 1;
-	m_input_latch[p1] >>= 1;
+	u8 ret = m_input_latch[p1] & 1;
+	if (!machine().side_effects_disabled())
+		m_input_latch[p1] >>= 1;
 
 // FIXME: UniSystem's wiring harness connects S Coin 2 to S Coin 1 edge hardness
 // This should mean games that don't check Coin 2 inputs respond on UniSys, but on DualSys they'd miss the Coin 2 inserts as all 4 inputs are separate?
@@ -433,16 +429,23 @@ u8 vs_base_state::vsnes_in1_r()
 {
 	// Only the Sub side CPU can kick the watchdog, which it must do by periodically reading $4017.
 	// This is one reason UniSystem games too must be installed on the Sub side.
-	if (m_watchdog && Side == SUB)
-		m_watchdog->watchdog_reset();
+	if (!machine().side_effects_disabled())
+	{
+		if (m_watchdog && Side == SUB)
+			m_watchdog->watchdog_reset();
+	}
 
-	int p2 = 2 * Side + 1;
+	const u8 p2 = 2 * Side + 1;
 
-	if (m_input_strobe[Side] & 1)
-		m_input_latch[p2] = m_in[p2]->read();
+	if (!machine().side_effects_disabled())
+	{
+		if (m_input_strobe[Side] & 1)
+			m_input_latch[p2] = m_in[p2]->read();
+	}
 
-	int ret = m_input_latch[p2] & 1;
-	m_input_latch[p2] >>= 1;
+	u8 ret = m_input_latch[p2] & 1;
+	if (!machine().side_effects_disabled())
+		m_input_latch[p2] >>= 1;
 
 	ret |= m_dsw[Side]->read() & ~3;          // merge the rest of the dipswitches
 
@@ -518,8 +521,17 @@ void vs_uni_state::v_set_videorom_bank(int start, int count, int vrom_start_bank
 		m_chr_banks[i + start]->set_entry(vrom_start_bank + i);
 }
 
+void vs_base_state::machine_start()
+{
+	save_item(NAME(m_coin));
+	save_item(NAME(m_input_latch));
+	save_item(NAME(m_input_strobe));
+}
+
 void vs_uni_state::machine_start()
 {
+	vs_base_state::machine_start();
+
 	// establish chr banks
 	// DRIVER_INIT is called first - means we can handle this different for VRAM games!
 	if (m_gfx1_rom != nullptr)
@@ -536,15 +548,26 @@ void vs_uni_state::machine_start()
 	}
 	else
 		m_chr_view.select(0);
+
+	save_item(NAME(m_mmc1_shiftreg));
+	save_item(NAME(m_mmc1_shiftcount));
+	save_item(NAME(m_mmc1_prg16k));
+	save_item(NAME(m_mmc1_switchlow));
+	save_item(NAME(m_mmc1_chr4k));
+	save_item(NAME(m_108_reg));
+	save_item(NAME(m_prot_index));
+	save_item(NAME(m_ret));
 }
 
 void vs_dual_state::machine_start()
 {
+	vs_base_state::machine_start();
+
 	for (int i = 0; i < 2; i++)
 	{
 		const char *region = i ? "gfx2" : "gfx1";
 		u8 *base = memregion(region)->base();
-		int entries = memregion(region)->bytes() / 0x2000;
+		const u32 entries = memregion(region)->bytes() / 0x2000;
 		m_chr_banks[i]->configure_entries(0, entries, base, 0x2000);
 		m_chr_banks[i]->set_entry(0);
 	}
@@ -552,12 +575,18 @@ void vs_dual_state::machine_start()
 
 void vs_smbbl_state::machine_start()
 {
+	vs_base_state::machine_start();
+
 	m_ppu1->set_scanline_callback(*this, FUNC(vs_smbbl_state::smbbl_scanline_cb));
 
 	u8 *base = m_gfx1_rom->base();
-	int entries = m_gfx1_rom->bytes() / 0x2000;
+	const u32 entries = m_gfx1_rom->bytes() / 0x2000;
 	m_chr_banks[0]->configure_entries(0, entries, base, 0x2000);
 	m_chr_banks[0]->set_entry(0);
+
+	save_item(NAME(m_bootleg_sound_offset));
+	save_item(NAME(m_bootleg_sound_data));
+	save_item(NAME(m_bootleg_latched_scanline));
 }
 
 /**********************************************************************************
@@ -569,7 +598,7 @@ void vs_smbbl_state::machine_start()
 //**********************************************************************************
 // Most games: VROM Banking in controller 0 write
 
-void vs_uni_state::vsnormal_vrom_banking(u8 data)
+void vs_uni_state::vsnormal_vrom_banking_w(u8 data)
 {
 	// switch vrom
 	v_set_videorom_bank(0, 8, (data & 4) ? 8 : 0);
@@ -583,7 +612,7 @@ void vs_uni_state::vsnormal_vrom_banking(u8 data)
 void vs_uni_state::init_vsnormal()
 {
 	// vrom switching is enabled with bit 2 of $4016
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x4016, 0x4016, write8smo_delegate(*this, FUNC(vs_uni_state::vsnormal_vrom_banking)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x4016, 0x4016, write8smo_delegate(*this, FUNC(vs_uni_state::vsnormal_vrom_banking_w)));
 }
 
 //**********************************************************************************
@@ -598,7 +627,7 @@ void vs_uni_state::init_vsgun()
 //**********************************************************************************
 // Konami VRC1 games: ROM banking at $8000-$ffff
 
-void vs_uni_state::vskonami_rom_banking(offs_t offset, u8 data)
+void vs_uni_state::vskonami_rom_banking_w(offs_t offset, u8 data)
 {
 	int reg = BIT(offset, 12, 3);
 
@@ -626,7 +655,7 @@ void vs_uni_state::init_vskonami()
 	init_prg_banking();
 
 	// banking is done with writes to the $8000-$ffff area
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::vskonami_rom_banking)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::vskonami_rom_banking_w)));
 }
 
 //**********************************************************************************
@@ -638,7 +667,7 @@ void vs_uni_state::vsgshoe_gun_in0_w(u8 data)
 	m_prg_banks[0]->set_entry(BIT(data, 2));
 
 	// otherwise do normal CHR banking and IO write
-	vsnormal_vrom_banking(data);
+	vsnormal_vrom_banking_w(data);
 }
 
 void vs_uni_state::init_vsgshoe()
@@ -655,13 +684,13 @@ void vs_uni_state::init_vsgshoe()
 //**********************************************************************************
 // MMC1 (Dr Mario): ROM banking at $8000-$ffff
 
-void vs_uni_state::drmario_rom_banking(offs_t offset, u8 data)
+void vs_uni_state::drmario_rom_banking_w(offs_t offset, u8 data)
 {
 	// reset mapper
 	if (data & 0x80)
 	{
 		m_mmc1_shiftcount = 0;
-		m_mmc1_prg16k = 1;
+		m_mmc1_prg16k = true;
 		m_mmc1_switchlow = 1;
 
 		return;
@@ -712,7 +741,7 @@ void vs_uni_state::init_drmario()
 	init_prg_banking();
 
 	// MMC1 mapper at $8000-$ffff
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::drmario_rom_banking)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::drmario_rom_banking_w)));
 
 	m_mmc1_shiftreg = 0;
 	m_mmc1_shiftcount = 0;
@@ -721,7 +750,7 @@ void vs_uni_state::init_drmario()
 //**********************************************************************************
 // (UNROM) Games with VRAM instead of graphics ROMs: ROM banking at $8000-$ffff
 
-void vs_uni_state::vsvram_rom_banking(u8 data)
+void vs_uni_state::vsvram_rom_banking_w(u8 data)
 {
 	prg16(0, data);
 }
@@ -732,13 +761,13 @@ void vs_uni_state::init_vsvram()
 	init_prg_banking();
 
 	// banking is done with writes to the $8000-$ffff area
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8smo_delegate(*this, FUNC(vs_uni_state::vsvram_rom_banking)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8smo_delegate(*this, FUNC(vs_uni_state::vsvram_rom_banking_w)));
 }
 
 //**********************************************************************************
 // (Namco) 108 (MMC3 predecessor) games
 
-void vs_uni_state::vs108_rom_banking(offs_t offset, u8 data)
+void vs_uni_state::vs108_rom_banking_w(offs_t offset, u8 data)
 {
 	switch (offset & 0x6001)
 	{
@@ -762,7 +791,7 @@ void vs_uni_state::vs108_rom_banking(offs_t offset, u8 data)
 			break;
 
 		default:
-			logerror("vs108_rom_banking uncaught: %04x value: %02x\n", offset + 0x8000, data);
+			logerror("vs108_rom_banking_w uncaught: %04x value: %02x\n", offset + 0x8000, data);
 			break;
 	}
 }
@@ -777,7 +806,7 @@ void vs_uni_state::init_vs108()
 	m_108_reg = 0;
 
 	// 108 chip at $8000-$9fff
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::vs108_rom_banking)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::vs108_rom_banking_w)));
 }
 
 // Vs. RBI Baseball
@@ -795,11 +824,15 @@ u8 vs_uni_state::rbibb_prot_r(offs_t offset)
 
 	if (offset == 0)
 	{
-		m_prot_index = 0;
+		if (!machine().side_effects_disabled())
+			m_prot_index = 0;
 		return 0;
 	}
 
-	return prot_data[m_prot_index++ & 0x1f];
+	const u8 prot_index = m_prot_index;
+	if (!machine().side_effects_disabled())
+		m_prot_index++;
+	return prot_data[prot_index & 0x1f];
 }
 
 void vs_uni_state::init_rbibb()
@@ -815,7 +848,8 @@ void vs_uni_state::init_rbibb()
 
 u8 vs_uni_state::supxevs_prot_1_r()
 {
-	m_prot_index ^= 1;
+	if (!machine().side_effects_disabled())
+		m_prot_index ^= 1;
 	return 0x05;
 }
 
@@ -860,11 +894,15 @@ u8 vs_uni_state::tkoboxng_prot_r(offs_t offset)
 
 	if (offset == 0)
 	{
-		m_prot_index = 0;
+		if (!machine().side_effects_disabled())
+			m_prot_index = 0;
 		return 0;
 	}
 
-	return prot_data[m_prot_index++ & 0x1f];
+	const u8 prot_index = m_prot_index;
+	if (!machine().side_effects_disabled())
+		m_prot_index++;
+	return prot_data[prot_index & 0x1f];
 }
 
 void vs_uni_state::init_tkoboxng()
@@ -886,7 +924,7 @@ void vs_uni_state::init_vsfdf()
 //**********************************************************************************
 // Sunsoft-3 (Platoon) rom banking
 
-void vs_uni_state::sunsoft3_rom_banking(offs_t offset, u8 data)
+void vs_uni_state::sunsoft3_rom_banking_w(offs_t offset, u8 data)
 {
 	switch (offset & 0x7800)
 	{
@@ -909,7 +947,7 @@ void vs_uni_state::init_platoon()
 	// point program banks to last 32K
 	init_prg_banking();
 
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::sunsoft3_rom_banking)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x8000, 0xffff, write8sm_delegate(*this, FUNC(vs_uni_state::sunsoft3_rom_banking_w)));
 }
 
 //**********************************************************************************
@@ -944,14 +982,14 @@ void vs_uni_state::init_bnglngby()
 // VS DualSystem
 
 template <u8 Side>
-void vs_dual_state::vsdual_vrom_banking(u8 data)
+void vs_dual_state::vsdual_vrom_banking_w(u8 data)
 {
 	// switch vrom
 	m_chr_banks[Side]->set_entry(BIT(data, 2));
 
 	// bit 1 ( data & 2 ) triggers irq on the other cpu
-	auto cpu = (Side == SUB) ? m_maincpu : m_subcpu;
-	cpu->set_input_line(0, (data & 2) ? CLEAR_LINE : ASSERT_LINE);
+	auto &cpu = (Side == SUB) ? *m_maincpu : *m_subcpu;
+	cpu.set_input_line(0, (data & 2) ? CLEAR_LINE : ASSERT_LINE);
 
 	// move along
 	vsnes_in0_w<Side>(data);
@@ -960,8 +998,8 @@ void vs_dual_state::vsdual_vrom_banking(u8 data)
 void vs_dual_state::init_vsdual()
 {
 	// vrom switching is enabled with bit 2 of $4016
-	m_maincpu->space(AS_PROGRAM).install_write_handler(0x4016, 0x4016, write8smo_delegate(*this, FUNC(vs_dual_state::vsdual_vrom_banking<MAIN>)));
-	m_subcpu->space(AS_PROGRAM).install_write_handler(0x4016, 0x4016, write8smo_delegate(*this, FUNC(vs_dual_state::vsdual_vrom_banking<SUB>)));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x4016, 0x4016, write8smo_delegate(*this, FUNC(vs_dual_state::vsdual_vrom_banking_w<MAIN>)));
+	m_subcpu->space(AS_PROGRAM).install_write_handler(0x4016, 0x4016, write8smo_delegate(*this, FUNC(vs_dual_state::vsdual_vrom_banking_w<SUB>)));
 }
 
 //**********************************************************************************
@@ -982,7 +1020,7 @@ u8 vs_smbbl_state::smbbl_ppu_data_r()
 {
 	// CPU always reads higher CHR ROM banks from $2007, PPU always reads lower ones
 	m_chr_banks[0]->set_entry(1);
-	u8 data = m_ppu1->read(0x2007);
+	const u8 data = m_ppu1->read(0x2007);
 	m_chr_banks[0]->set_entry(0);
 
 	return data;
@@ -996,7 +1034,7 @@ void vs_base_state::vsnes_cpu1_map(address_map &map)
 {
 	map(0x0000, 0x07ff).mirror(0x1800).ram();
 	map(0x2000, 0x3fff).rw(m_ppu1, FUNC(ppu2c0x_device::read), FUNC(ppu2c0x_device::write));
-	map(0x4014, 0x4014).w(FUNC(vs_base_state::sprite_dma_w<MAIN>));
+	map(0x4014, 0x4014).w(m_ppu1, FUNC(ppu2c0x_device::spriteram_dma));
 	map(0x4016, 0x4016).rw(FUNC(vs_base_state::vsnes_in0_r<MAIN>), FUNC(vs_base_state::vsnes_in0_w<MAIN>));
 	map(0x4017, 0x4017).r(FUNC(vs_base_state::vsnes_in1_r<MAIN>)); // IN1 - input port 2 / PSG second control register
 	map(0x4020, 0x5fff).rw(FUNC(vs_base_state::vsnes_coin_counter_r<MAIN>), FUNC(vs_base_state::vsnes_coin_counter_w<MAIN>));
@@ -1015,7 +1053,7 @@ void vs_base_state::vsnes_cpu2_map(address_map &map)
 {
 	map(0x0000, 0x07ff).mirror(0x1800).ram();
 	map(0x2000, 0x3fff).rw(m_ppu2, FUNC(ppu2c0x_device::read), FUNC(ppu2c0x_device::write));
-	map(0x4014, 0x4014).w(FUNC(vs_base_state::sprite_dma_w<SUB>));
+	map(0x4014, 0x4014).w(m_ppu2, FUNC(ppu2c0x_device::spriteram_dma));
 	map(0x4016, 0x4016).rw(FUNC(vs_base_state::vsnes_in0_r<SUB>), FUNC(vs_base_state::vsnes_in0_w<SUB>));
 	map(0x4017, 0x4017).r(FUNC(vs_base_state::vsnes_in1_r<SUB>));  // IN1 - input port 2 / PSG second control register
 	map(0x4020, 0x5fff).rw(FUNC(vs_base_state::vsnes_coin_counter_r<SUB>), FUNC(vs_base_state::vsnes_coin_counter_w<SUB>));
@@ -1231,10 +1269,12 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( vsnes_zapper )
 	PORT_START("IN0")
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_UNUSED )            // low 6 bits always read 0b010000
+	PORT_CONFNAME( 0x10, 0x10, "Gun Alarm Wire" )           // ALM wire (ignored by Gumshoe and Freedom Force?)
+	PORT_CONFSETTING(    0x00, "Disconnected" )
+	PORT_CONFSETTING(    0x10, "Connected" )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )            // sprite hit
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )           // gun trigger
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_CUSTOM )            // gun HIT
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )           // gun TRG
 
 	PORT_START("IN1")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -1296,7 +1336,7 @@ static INPUT_PORTS_START( platoon )
 	PORT_DIPSETTING(    0x08, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )
 	PORT_DIPSETTING(    0x18, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0xE0, 0x00, DEF_STR( Coinage ) )      PORT_DIPLOCATION("SW1:!6,!7,!8")
+	PORT_DIPNAME( 0xe0, 0x00, DEF_STR( Coinage ) )      PORT_DIPLOCATION("SW1:!6,!7,!8")
 	PORT_DIPSETTING(    0xc0, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 3C_1C ) )
@@ -1341,7 +1381,7 @@ Win Hole    +1  +2
 Tie          0   0
 Lose Hole   -1  -2
 */
-	PORT_DIPNAME( 0x60, 0x00, "Starting Points" )       PORT_DIPLOCATION("SW1:!6,7")
+	PORT_DIPNAME( 0x60, 0x20, "Starting Points" )       PORT_DIPLOCATION("SW1:!6,7")
 	PORT_DIPSETTING(    0x00, "10" )
 	PORT_DIPSETTING(    0x40, "13" )
 	PORT_DIPSETTING(    0x20, "16" )
@@ -1349,6 +1389,17 @@ Lose Hole   -1  -2
 	PORT_DIPNAME( 0x80, 0x00, "Difficulty Vs. Computer" )   PORT_DIPLOCATION("SW1:!8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Hard ) )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( golfj )
+	PORT_INCLUDE( golf )
+
+	PORT_MODIFY("DSW0")
+	PORT_DIPNAME( 0x60, 0x20, "Starting Points" )       PORT_DIPLOCATION("SW1:!6,7")
+	PORT_DIPSETTING(    0x00, "300" )
+	PORT_DIPSETTING(    0x40, "400" )
+	PORT_DIPSETTING(    0x20, "500" )
+	PORT_DIPSETTING(    0x60, "600" )
 INPUT_PORTS_END
 
 // Same as 'golf', but 4 start buttons
@@ -1503,21 +1554,32 @@ static INPUT_PORTS_START( balonfgt )
 	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "SW2:!8" )       // Manual states this is Unused
 INPUT_PORTS_END
 
+// TODO: verify DIPs for Rules, Difficulty, and Dora. Finding a copy of the manual would certainly help.
 static INPUT_PORTS_START( vsmahjng )
 	PORT_INCLUDE( vsnes_dual_rev )
 
 	PORT_START("DSW0")  // bit 0 and 1 read from bit 3 and 4 on $4016, rest of the bits read on $4017
-	PORT_DIPUNKNOWN_DIPLOC( 0x01, 0x00, "SW1:!1" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x02, 0x00, "SW1:!2" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x04, 0x00, "SW1:!3" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x08, 0x00, "SW1:!4" )
-	PORT_DIPNAME( 0x30, 0x00, "Time" )                  PORT_DIPLOCATION("SW1:!5,!6")
+	PORT_DIPNAME( 0x01, 0x00, "Rules" )                 PORT_DIPLOCATION("SW1:!1")
+	PORT_DIPSETTING(    0x00, "Kansai" )
+	PORT_DIPSETTING(    0x01, "Kantou" )
+	PORT_DIPNAME( 0x06, 0x00, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!2,!3")
+	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x06, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x08, 0x00, "Timer" )                 PORT_DIPLOCATION("SW1:!4")
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x30, 0x00, "Initial Time" )          PORT_DIPLOCATION("SW1:!5,!6")
 	PORT_DIPSETTING(    0x30, "30" )
 	PORT_DIPSETTING(    0x10, "45" )
 	PORT_DIPSETTING(    0x20, "60" )
 	PORT_DIPSETTING(    0x00, "90" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x40, 0x00, "SW1:!7" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x80, 0x00, "SW1:!8" )
+	PORT_DIPNAME( 0xc0, 0x00, "Additional Time" )       PORT_DIPLOCATION("SW1:!7,!8")
+	PORT_DIPSETTING(    0xc0, "8" )
+	PORT_DIPSETTING(    0x40, "12" )
+	PORT_DIPSETTING(    0x80, "15" )
+	PORT_DIPSETTING(    0x00, "20" )
 
 	PORT_START("DSW1")  // bit 0 and 1 read from bit 3 and 4 on $4016, rest of the bits read on $4017
 	PORT_SERVICE( 0x01, IP_ACTIVE_HIGH )                PORT_DIPLOCATION("SW2:!1")
@@ -1526,9 +1588,13 @@ static INPUT_PORTS_START( vsmahjng )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( Free_Play ) )
-	PORT_DIPUNKNOWN_DIPLOC( 0x08, 0x00, "SW2:!4" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x00, "SW2:!5" )
-	PORT_DIPNAME( 0x60, 0x20, "Starting Points" )       PORT_DIPLOCATION("SW2:!6,!7")
+	PORT_DIPNAME( 0x08, 0x00, "Mawashi" )               PORT_DIPLOCATION("SW2:!4")
+	PORT_DIPSETTING(    0x08, "Tonnan" )
+	PORT_DIPSETTING(    0x00, "Tonton" )
+	PORT_DIPNAME( 0x10, 0x00, "Dora" )                  PORT_DIPLOCATION("SW2:!5")
+	PORT_DIPSETTING(    0x00, "Genbutsu" )
+	PORT_DIPSETTING(    0x10, "Next" )
+	PORT_DIPNAME( 0x60, 0x00, "Starting Points" )       PORT_DIPLOCATION("SW2:!6,!7")
 	PORT_DIPSETTING(    0x60, "15000" )
 	PORT_DIPSETTING(    0x20, "20000" )
 	PORT_DIPSETTING(    0x40, "25000" )
@@ -1542,12 +1608,12 @@ static INPUT_PORTS_START( vsbball )
 	PORT_INCLUDE( vsnes_dual_rev )
 
 	PORT_START("DSW0")  // bit 0 and 1 read from bit 3 and 4 on $4016, rest of the bits read on $4017
-	PORT_DIPNAME( 0x03, 0x02, "Player Defense Strength" )   PORT_DIPLOCATION("SW1:!1,!2")
+	PORT_DIPNAME( 0x03, 0x01, "Player Defense Strength" )   PORT_DIPLOCATION("SW1:!1,!2")
 	PORT_DIPSETTING(    0x00, "Weak" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Medium ) )
 	PORT_DIPSETTING(    0x03, "Strong" )
-	PORT_DIPNAME( 0x0c, 0x08, "Player Offense Strength" )   PORT_DIPLOCATION("SW1:!3,!4")
+	PORT_DIPNAME( 0x0c, 0x04, "Player Offense Strength" )   PORT_DIPLOCATION("SW1:!3,!4")
 	PORT_DIPSETTING(    0x00, "Weak" )
 	PORT_DIPSETTING(    0x08, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Medium ) )
@@ -1570,7 +1636,7 @@ static INPUT_PORTS_START( vsbball )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x38, 0x00, "Starting Points" )       PORT_DIPLOCATION("SW2:!4,!5,!6")
+	PORT_DIPNAME( 0x38, 0x30, "Starting Points" )       PORT_DIPLOCATION("SW2:!4,!5,!6")
 	PORT_DIPSETTING(    0x00, "80 Pts" )
 	PORT_DIPSETTING(    0x20, "100 Pts" )
 	PORT_DIPSETTING(    0x10, "150 Pts" )
@@ -1761,7 +1827,7 @@ static INPUT_PORTS_START( cstlevna )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!7")  // Damage taken
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )                     // Normal
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )                     // Double
-	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "SW1:!8" )       // Manual states "Must be Set to "OFF"
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "SW1:!8" )       // Manual states Must be Set to "OFF"
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( iceclimb )
@@ -1851,6 +1917,7 @@ static INPUT_PORTS_START( jajamaru )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x10, "4" )
 	PORT_DIPSETTING(    0x08, "5" )
+	PORT_DIPSETTING(    0x18, "6" )                     // status bar only shows up to 4 reserve lives
 	PORT_DIPUNKNOWN_DIPLOC( 0x20, 0x00, "SW1:!6" )
 	PORT_DIPUNKNOWN_DIPLOC( 0x40, 0x00, "SW1:!7" )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) )  PORT_DIPLOCATION("SW1:!8")
@@ -1929,7 +1996,7 @@ static INPUT_PORTS_START( suprmrio )
 	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!4")
 	PORT_DIPSETTING(    0x08, "2" )
 	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )   PORT_DIPLOCATION("SW1:!5,!6")
+	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Bonus_Life ) )   PORT_DIPLOCATION("SW1:!5,!6")
 	PORT_DIPSETTING(    0x00, "100 Coins" )
 	PORT_DIPSETTING(    0x20, "150 Coins" )
 	PORT_DIPSETTING(    0x10, "200 Coins" )
@@ -1937,7 +2004,7 @@ static INPUT_PORTS_START( suprmrio )
 	PORT_DIPNAME( 0x40, 0x00, "Timer" )                 PORT_DIPLOCATION("SW1:!7")
 	PORT_DIPSETTING(    0x00, "Slow" )
 	PORT_DIPSETTING(    0x40, "Fast" )
-	PORT_DIPNAME( 0x80, 0x80, "Continue Lives" )        PORT_DIPLOCATION("SW1:!8")
+	PORT_DIPNAME( 0x80, 0x00, "Continue Lives" )        PORT_DIPLOCATION("SW1:!8")
 	PORT_DIPSETTING(    0x80, "3" )
 	PORT_DIPSETTING(    0x00, "4" )
 INPUT_PORTS_END
@@ -1983,7 +2050,7 @@ static INPUT_PORTS_START( hogalley )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x18, 0x08, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!4,!5")
+	PORT_DIPNAME( 0x18, 0x10, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!4,!5")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )
@@ -2011,12 +2078,12 @@ static INPUT_PORTS_START( vsgshoe )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x18, 0x08, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!4,!5")
+	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!4,!5")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x18, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!6")
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!6")
 	PORT_DIPSETTING(    0x20, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
 	PORT_DIPNAME( 0x40, 0x00, "Bullets per Balloon" )   PORT_DIPLOCATION("SW1:!7")
@@ -2082,7 +2149,9 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( vsskykid )
 	PORT_INCLUDE( vsnes_rev )
 
-	// FIXME: vsskykid needs button 3 to select a 2 player game. This is installed here for now, but really 2 player mode should only work on a DualSystem.
+	// FIXME: according to the manual, the operator "must solder a jumper wire connecting traces 9 and 10 on the edge connector P2"
+	// This mod will make Select 2 start a two player game on a UniSystem, as the game is really hard coded to use the nonexistent Select 3.
+	// Similar fake button for jajamaru can also be removed when this is fixed.
 	PORT_MODIFY("IN0")
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START3 ) PORT_NAME("Select 3 (Purple)")  // START on a NES
 
@@ -2185,17 +2254,28 @@ static INPUT_PORTS_START( vssoccer )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x18, 0x08, "Points Timer" )          PORT_DIPLOCATION("SW1:!4,!5")
-	PORT_DIPSETTING(    0x00, "600 Pts" )
-	PORT_DIPSETTING(    0x10, "800 Pts" )
-	PORT_DIPSETTING(    0x08, "1000 Pts" )
-	PORT_DIPSETTING(    0x18, "1200 Pts" )
+	PORT_DIPNAME( 0x18, 0x00, "Points Timer" )          PORT_DIPLOCATION("SW1:!4,!5")
+	PORT_DIPSETTING(    0x00, "1000 Pts" )
+	PORT_DIPSETTING(    0x10, "1500 Pts" )
+	PORT_DIPSETTING(    0x08, "2000 Pts" )
+	PORT_DIPSETTING(    0x18, "600 Pts" )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!6,!7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Medium ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Hard ) )
 	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "SW1:!8" )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( vssoccera )
+	PORT_INCLUDE( vssoccer )
+
+	PORT_MODIFY("DSW0")
+	PORT_DIPNAME( 0x18, 0x18, "Points Timer" )          PORT_DIPLOCATION("SW1:!4,!5")
+	PORT_DIPSETTING(    0x00, "600 Pts" )
+	PORT_DIPSETTING(    0x10, "800 Pts" )
+	PORT_DIPSETTING(    0x08, "1000 Pts" )
+	PORT_DIPSETTING(    0x18, "1200 Pts" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( vsgradus )
@@ -2211,7 +2291,7 @@ static INPUT_PORTS_START( vsgradus )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!4")
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!4")
 	PORT_DIPSETTING(    0x08, "3" )
 	PORT_DIPSETTING(    0x00, "4" )
 	PORT_DIPNAME( 0x30, 0x00, "Bonus" )                 PORT_DIPLOCATION("SW1:!5,!6")
@@ -2251,7 +2331,7 @@ static INPUT_PORTS_START( vsslalom )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Allow_Continue ) )   PORT_DIPLOCATION("SW1:!7")
 	PORT_DIPSETTING(    0x40, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x80, 0x00, "Inverted input" )        PORT_DIPLOCATION("SW1:!8")
+	PORT_DIPNAME( 0x80, 0x00, "Inverted input" )        PORT_DIPLOCATION("SW1:!8")       // Manual states Not Used - Must be Set to "OFF"
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -2289,11 +2369,11 @@ static INPUT_PORTS_START( tkoboxng )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x0C, 0x00, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!3,!4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!3,!4")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x0C, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( Very_Hard ) )
 	PORT_DIPUNUSED_DIPLOC( 0x10, 0x00, "SW1:!5" )
 	PORT_DIPNAME( 0xe0, 0x00, "PPU Type" )              PORT_DIPLOCATION("SW1:!6,!7,!8")
 	PORT_DIPSETTING(    0x00, "RP2C04-0003" )
@@ -2330,11 +2410,16 @@ static INPUT_PORTS_START( bnglngby )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( Free_Play ) )
 	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!4")
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x08, "3" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x00, "SW1:!5" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x20, 0x00, "SW1:!6" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x40, 0x00, "SW1:!7" )
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x08, "4" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x00, "SW1:!5" )      // stored in $f5, is it ever used?
+// TODO: check if there's a more specific meaning than difficulty for this.
+// The game seems to peg several things to level# ($d2) + DIP determined value ($0233).
+	PORT_DIPNAME( 0x60, 0x00, DEF_STR( Difficulty ) )   PORT_DIPLOCATION("SW1:!6,!7")
+	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Medium ) )
+	PORT_DIPSETTING(    0x60, DEF_STR( Hard ) )
 	PORT_DIPUNKNOWN_DIPLOC( 0x80, 0x00, "SW1:!8" )
 INPUT_PORTS_END
 
@@ -2367,19 +2452,28 @@ static INPUT_PORTS_START( supxevs )
 
 	PORT_START("DSW0")  // bit 0 and 1 read from bit 3 and 4 on $4016, rest of the bits read on $4017
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Bonus_Life ) )   PORT_DIPLOCATION("SW1:!1")
-	PORT_DIPSETTING(    0x00, "50000" ) // and every ?
-	PORT_DIPSETTING(    0x01, "70000" ) // and every ?
+	PORT_DIPSETTING(    0x00, "50k, 150k, every 150k" )
+	PORT_DIPSETTING(    0x01, "70k, 200k, every 200k" )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Lives ) )        PORT_DIPLOCATION("SW1:!2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x02, "5" )
 	PORT_DIPUNKNOWN_DIPLOC( 0x04, 0x00, "SW1:!3" )
-	PORT_DIPUNKNOWN_DIPLOC( 0x08, 0x00, "SW1:!4" )
+	PORT_DIPNAME( 0x08, 0x00, "Hidden Password Screen" )  PORT_DIPLOCATION("SW1:!4")
+	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( No ) )
+// Set to Yes and hold both A and B while pressing P1 start to access Password Screen
+//     Level 2:  5135
+//     Level 3:  3706
+//     Level 4:  6853
+//     Level 5:  3381
+//     Level 6:  3913
+//     Level 7:  2311
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coinage ) )      PORT_DIPLOCATION("SW1:!5,!6")
 	PORT_DIPSETTING(    0x30, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0xc0, 0x00, "PPU Type" )          PORT_DIPLOCATION("SW1:!7,!8")
+	PORT_DIPNAME( 0xc0, 0x00, "PPU Type" )              PORT_DIPLOCATION("SW1:!7,!8")
 	PORT_DIPSETTING(    0x00, "RP2C04-0001" )
 	PORT_DIPSETTING(    0x40, "RP2C04-0002" )
 	PORT_DIPSETTING(    0x80, "RP2C04-0003" )
@@ -2390,14 +2484,14 @@ INPUT_PORTS_END
 void vs_uni_state::vsnes(machine_config &config)
 {
 	// basic machine hardware
-	n2a03_device &maincpu(N2A03(config, m_maincpu, NTSC_APU_CLOCK));
+	rp2a03_device &maincpu(RP2A03(config, m_maincpu, NTSC_APU_CLOCK));
 	maincpu.set_addrmap(AS_PROGRAM, &vs_uni_state::vsnes_cpu1_map);
 
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 
 	// video hardware
 	screen_device &screen1(SCREEN(config, "screen1", SCREEN_TYPE_RASTER));
-	screen1.set_raw(N2A03_NTSC_XTAL / 4, 341, 0, VISIBLE_SCREEN_WIDTH, ppu2c0x_device::NTSC_SCANLINES_PER_FRAME, 0, VISIBLE_SCREEN_HEIGHT);
+	screen1.set_raw(RP2A03_NTSC_XTAL / 4, 341, 0, VISIBLE_SCREEN_WIDTH, ppu2c0x_device::NTSC_SCANLINES_PER_FRAME, 0, VISIBLE_SCREEN_HEIGHT);
 	screen1.set_screen_update("ppu1", FUNC(ppu2c0x_device::screen_update));
 
 	PPU_2C04(config, m_ppu1);
@@ -2460,10 +2554,10 @@ void vs_uni_state::topgun(machine_config &config)
 void vs_dual_state::vsdual(machine_config &config)
 {
 	// basic machine hardware
-	n2a03_device &maincpu(N2A03(config, m_maincpu, NTSC_APU_CLOCK));
+	rp2a03_device &maincpu(RP2A03(config, m_maincpu, NTSC_APU_CLOCK));
 	maincpu.set_addrmap(AS_PROGRAM, &vs_dual_state::vsnes_cpu1_map);
 
-	n2a03_device &subcpu(N2A03(config, m_subcpu, NTSC_APU_CLOCK));
+	rp2a03_device &subcpu(RP2A03(config, m_subcpu, NTSC_APU_CLOCK));
 	subcpu.set_addrmap(AS_PROGRAM, &vs_dual_state::vsnes_cpu2_map);
 
 	// need high level of interleave to keep screens in sync in Balloon Fight.
@@ -2474,11 +2568,11 @@ void vs_dual_state::vsdual(machine_config &config)
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 
 	screen_device &screen1(SCREEN(config, "screen1", SCREEN_TYPE_RASTER));
-	screen1.set_raw(N2A03_NTSC_XTAL / 4, 341, 0, VISIBLE_SCREEN_WIDTH, ppu2c0x_device::NTSC_SCANLINES_PER_FRAME, 0, VISIBLE_SCREEN_HEIGHT);
+	screen1.set_raw(RP2A03_NTSC_XTAL / 4, 341, 0, VISIBLE_SCREEN_WIDTH, ppu2c0x_device::NTSC_SCANLINES_PER_FRAME, 0, VISIBLE_SCREEN_HEIGHT);
 	screen1.set_screen_update("ppu1", FUNC(ppu2c0x_device::screen_update));
 
 	screen_device &screen2(SCREEN(config, "screen2", SCREEN_TYPE_RASTER));
-	screen2.set_raw(N2A03_NTSC_XTAL / 4, 341, 0, VISIBLE_SCREEN_WIDTH, ppu2c0x_device::NTSC_SCANLINES_PER_FRAME, 0, VISIBLE_SCREEN_HEIGHT);
+	screen2.set_raw(RP2A03_NTSC_XTAL / 4, 341, 0, VISIBLE_SCREEN_WIDTH, ppu2c0x_device::NTSC_SCANLINES_PER_FRAME, 0, VISIBLE_SCREEN_HEIGHT);
 	screen2.set_screen_update("ppu2", FUNC(ppu2c0x_device::screen_update));
 
 	PPU_2C04(config, m_ppu1);
@@ -3523,14 +3617,14 @@ GAME( 1985, vsskykid,       0,             vsnes,         vsskykid, vs_uni_state
 GAME( 1987, tkoboxng,       0,             vsnes,         tkoboxng, vs_uni_state,   init_tkoboxng, ROT0, "Namco / Data East USA",  "Vs. T.K.O. Boxing",                                        0 )
 GAME( 1984, smgolf,         0,             vsnes,         golf,     vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Stroke & Match Golf (Men Version, set GF4-2 F)",       0 )
 GAME( 1984, smgolfb,        smgolf,        vsnes,         golf4s,   vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Stroke & Match Golf (Men Version, set GF4-2 ?)",       0 )
-GAME( 1984, smgolfj,        smgolf,        vsnes,         golf,     vs_uni_state,   init_vsnormal, ROT0, "Nintendo Co., Ltd.",     "Vs. Stroke & Match Golf (Men Version) (Japan, set GF3 B)", 0 )
+GAME( 1984, smgolfj,        smgolf,        vsnes,         golfj,    vs_uni_state,   init_vsnormal, ROT0, "Nintendo Co., Ltd.",     "Vs. Stroke & Match Golf (Men Version) (Japan, set GF3 B)", 0 )
 GAME( 1984, ladygolfe,      smgolf,        vsnes,         golf4s,   vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Stroke & Match Golf (Ladies Version, set LG4 E)",      0 )
 GAME( 1984, ladygolf,       smgolf,        vsnes,         golf,     vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Stroke & Match Golf (Ladies Version, set LG4 ?)",      0 )
 GAME( 1984, vspinbal,       0,             vsnes,         vspinbal, vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Pinball (US, set PN4 E-1)",                            0 )
 GAME( 1984, vspinbalj,      vspinbal,      vsnes,         vspinbal, vs_uni_state,   init_vsnormal, ROT0, "Nintendo Co., Ltd.",     "Vs. Pinball (Japan, set PN3 B)",                           0 )
 GAME( 1986, vsslalom,       0,             vsnes,         vsslalom, vs_uni_state,   init_vsnormal, ROT0, "Rare Coin-It Inc.",      "Vs. Slalom",                                               MACHINE_IMPERFECT_GRAPHICS )
 GAME( 1985, vssoccer,       0,             vsnes,         vssoccer, vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Soccer (set SC4-2 A)",                                 0 )
-GAME( 1985, vssoccera,      vssoccer,      vsnes,         vssoccer, vs_uni_state,   init_vsnormal, ROT0, "Nintendo",               "Vs. Soccer (set SC4-3 ?)",                                 0 )
+GAME( 1985, vssoccera,      vssoccer,      vsnes,         vssoccera, vs_uni_state,  init_vsnormal, ROT0, "Nintendo",               "Vs. Soccer (set SC4-3 ?)",                                 0 )
 GAME( 1986, vsgradus,       0,             vsnes,         vsgradus, vs_uni_state,   init_vskonami, ROT0, "Konami",                 "Vs. Gradius (US, set GR E)",                               0 )
 GAME( 1987, nvs_platoon,    0,             vsnes,         platoon,  vs_uni_state,   init_platoon,  ROT0, "Ocean Software Limited", "Vs. Platoon",                                              0 )
 GAME( 1987, vstetris,       0,             vsnes,         vstetris, vs_uni_state,   init_vsnormal, ROT0, "Academysoft-Elorg",      "Vs. Tetris" ,                                              0 )

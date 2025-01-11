@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:yoyo_chessboard
-/******************************************************************************
+/*******************************************************************************
 
 Fidelity Sensory Chess Challenger "8" (SCC)
 
@@ -15,12 +15,12 @@ It was also rereleased in 1983 as "Poppy", marketed for children, the housing
 was in bright red color.
 
 Hardware notes:
+- PCB label: 510-1011 REV.2
 - Z80A CPU @ 3.9MHz
 - 4KB ROM(MOS 2732), 256 bytes RAM(35391CP)
 - chessboard buttons, 8*8+1 leds
-- PCB label 510-1011 REV.2
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
@@ -32,7 +32,7 @@ Hardware notes:
 #include "speaker.h"
 
 // internal artwork
-#include "fidel_sc8.lh" // clickable
+#include "fidel_sc8.lh"
 
 
 namespace {
@@ -53,26 +53,26 @@ public:
 	void scc(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
 	required_device<cpu_device> m_maincpu;
 	required_device<sensorboard_device> m_board;
 	required_device<pwm_display_device> m_display;
-	required_device<dac_bit_interface> m_dac;
+	required_device<dac_1bit_device> m_dac;
 	required_ioport m_inputs;
 
+	u8 m_inp_mux = 0;
+	u8 m_led_data = 0;
+
 	// address maps
-	void main_map(address_map &map);
-	void main_io(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
+	void main_io(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	u8 input_r();
 	void control_w(offs_t offset, u8 data);
-
-	u8 m_inp_mux = 0;
-	u8 m_led_data = 0;
 };
 
 void scc_state::machine_start()
@@ -84,9 +84,9 @@ void scc_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 void scc_state::control_w(offs_t offset, u8 data)
 {
@@ -94,19 +94,21 @@ void scc_state::control_w(offs_t offset, u8 data)
 	u8 mask = 1 << (offset & 7);
 	m_led_data = (m_led_data & ~mask) | ((data & 0x80) ? mask : 0);
 
-	// d0-d3: led select, input mux (row 9 is speaker out)
+	// d0-d3: 7442 to led select, input mux
 	// d4: corner led(direct)
 	m_inp_mux = data & 0xf;
 	u16 sel = 1 << m_inp_mux;
-	m_dac->write(BIT(sel, 9));
 	m_display->matrix((sel & 0xff) | (data << 4 & 0x100), m_led_data);
+
+	// 7442 9: speaker out
+	m_dac->write(BIT(sel, 9));
 }
 
 u8 scc_state::input_r()
 {
+	// d0-d7: multiplexed inputs (active low)
 	u8 data = 0;
 
-	// d0-d7: multiplexed inputs (active low)
 	// read chessboard sensors
 	if (m_inp_mux < 8)
 		data = m_board->read_file(m_inp_mux);
@@ -120,9 +122,9 @@ u8 scc_state::input_r()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void scc_state::main_map(address_map &map)
 {
@@ -138,9 +140,9 @@ void scc_state::main_io(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( scc )
 	PORT_START("IN.0")
@@ -150,19 +152,19 @@ static INPUT_PORTS_START( scc )
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_4) PORT_CODE(KEYCODE_4_PAD) PORT_NAME("Bishop")
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_5_PAD) PORT_NAME("Queen")
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_6_PAD) PORT_NAME("King")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DEL) PORT_NAME("CL")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_NAME("RE")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DEL) PORT_CODE(KEYCODE_BACKSPACE) PORT_NAME("CL")
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_CODE(KEYCODE_N) PORT_NAME("RE")
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void scc_state::scc(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	Z80(config, m_maincpu, 3.9_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &scc_state::main_map);
 	m_maincpu->set_addrmap(AS_IO, &scc_state::main_io);
@@ -171,20 +173,20 @@ void scc_state::scc(machine_config &config)
 	m_board->init_cb().set(m_board, FUNC(sensorboard_device::preset_chess));
 	m_board->set_delay(attotime::from_msec(150));
 
-	/* video hardware */
+	// video hardware
 	PWM_DISPLAY(config, m_display).set_size(9, 8);
 	config.set_default_layout(layout_fidel_sc8);
 
-	/* sound hardware */
+	// sound hardware
 	SPEAKER(config, "speaker").front_center();
 	DAC_1BIT(config, m_dac).add_route(ALL_OUTPUTS, "speaker", 0.25);
 }
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( fscc8 ) // model SCC
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -195,9 +197,9 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME   PARENT CMP MACHINE  INPUT  STATE      INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1980, fscc8, 0,      0, scc,     scc,   scc_state, empty_init, "Fidelity Electronics", "Sensory Chess Challenger \"8\"", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  CLASS      INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1980, fscc8, 0,      0,      scc,     scc,   scc_state, empty_init, "Fidelity Electronics", "Sensory Chess Challenger \"8\"", MACHINE_SUPPORTS_SAVE )

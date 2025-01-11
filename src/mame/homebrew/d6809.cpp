@@ -107,6 +107,8 @@ ToDo:
 #include "machine/terminal.h"
 
 
+namespace {
+
 class d6809_state : public driver_device
 {
 public:
@@ -125,11 +127,11 @@ private:
 	void term_w(u8 data);
 	void kbd_put(u8 data);
 
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	u8 m_term_data = 0U;
-	void machine_start() override;
-	void machine_reset() override;
+	void machine_start() override ATTR_COLD;
+	void machine_reset() override ATTR_COLD;
 	required_device<cpu_device> m_maincpu;
 	required_device<generic_terminal_device> m_terminal;
 	required_device<upd765a_device> m_fdc;
@@ -219,6 +221,9 @@ ROM_START( d6809 )
 	ROM_REGION( 0x2000, "roms", 0 )
 	ROM_LOAD( "d6809.rom", 0x0000, 0x2000, CRC(2ceb40b8) SHA1(780111541234b4f0f781a118d955df61daa56e7e))
 ROM_END
+
+} // anonymous namespace
+
 
 /* Driver */
 

@@ -93,9 +93,6 @@ E1 Prog ROM 42 DEMON/DIAMOND (CX2615)
 
 ***************************************************************************/
 
-// the new RIOT does not work with the SuperCharger
-// for example "mame a2600 scharger -cass offifrog" fails to load after playing the tape
-
 #include "emu.h"
 
 
@@ -114,13 +111,7 @@ E1 Prog ROM 42 DEMON/DIAMOND (CX2615)
 #include "speaker.h"
 #include "tia.h"
 
-#define USE_NEW_RIOT 0
-
-#if USE_NEW_RIOT
-#include "machine/mos6530n.h"
-#else
-#include "machine/6532riot.h"
-#endif
+#include "machine/mos6530.h"
 
 //#define VERBOSE (LOG_GENERAL)
 #include "logmacro.h"
@@ -131,9 +122,6 @@ namespace {
 static const uint16_t supported_screen_heights[4] = { 262, 312, 328, 342 };
 
 
-#define CONTROL1_TAG    "joyport1"
-#define CONTROL2_TAG    "joyport2"
-
 class a2600_base_state : public driver_device
 {
 protected:
@@ -143,15 +131,15 @@ protected:
 		m_tia(*this, "tia_video"),
 		m_maincpu(*this, "maincpu"),
 		m_riot(*this, "riot"),
-		m_joy1(*this, CONTROL1_TAG),
-		m_joy2(*this, CONTROL2_TAG),
+		m_joy1(*this, "joyport1"),
+		m_joy2(*this, "joyport2"),
 		m_screen(*this, "screen"),
 		m_xtal(xtal)
 	{ }
 
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
-	void a2600_mem(address_map &map);
+	void a2600_mem(address_map &map) ATTR_COLD;
 
 	void a2600_base_ntsc(machine_config &config);
 	void a2600_base_pal(machine_config &config);
@@ -159,7 +147,7 @@ protected:
 	void switch_A_w(uint8_t data);
 	uint8_t switch_A_r();
 	void switch_B_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(irq_callback);
+	void irq_callback(int state);
 	uint16_t a2600_read_input_port(offs_t offset);
 	uint8_t a2600_get_databus_contents(offs_t offset);
 	void a2600_tia_vsync_callback(uint16_t data);
@@ -167,11 +155,7 @@ protected:
 	required_shared_ptr<uint8_t> m_riot_ram;
 	required_device<tia_video_device> m_tia;
 	required_device<m6507_device> m_maincpu;
-#if USE_NEW_RIOT
-	required_device<mos6532_new_device> m_riot;
-#else
-	required_device<riot6532_device> m_riot;
-#endif
+	required_device<mos6532_device> m_riot;
 	required_device<vcs_control_port_device> m_joy1;
 	required_device<vcs_control_port_device> m_joy2;
 	required_device<screen_device> m_screen;
@@ -233,11 +217,11 @@ public:
 	void a2600_pop(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
-	void memory_map(address_map &map);
+	void memory_map(address_map &map) ATTR_COLD;
 
 	uint8_t rom_switch_r(offs_t offset);
 	void rom_switch_w(offs_t offset, uint8_t data);
@@ -261,15 +245,16 @@ public:
 	{ }
 
 	void tvboy(machine_config &config);
+	void tvboyn(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	void bank_write(offs_t offset, uint8_t data);
 
-	void tvboy_mem(address_map &map);
+	void tvboy_mem(address_map &map) ATTR_COLD;
 
 	required_memory_bank m_crom;
 	required_region_ptr<uint8_t> m_rom;
@@ -280,11 +265,7 @@ void a2600_base_state::a2600_mem(address_map &map) // 6507 has 13-bit address sp
 {
 	map(0x0000, 0x007f).mirror(0x0f00).rw(m_tia, FUNC(tia_video_device::read), FUNC(tia_video_device::write));
 	map(0x0080, 0x00ff).mirror(0x0d00).ram().share("riot_ram");
-#if USE_NEW_RIOT
-	map(0x0280, 0x029f).mirror(0x0d00).m("riot", FUNC(mos6532_new_device::io_map));
-#else
-	map(0x0280, 0x029f).mirror(0x0d00).rw("riot", FUNC(riot6532_device::read), FUNC(riot6532_device::write));
-#endif
+	map(0x0280, 0x029f).mirror(0x0d00).m("riot", FUNC(mos6532_device::io_map));
 }
 
 void a2600_pop_state::memory_map(address_map &map) // 6507 has 13-bit address space, 0x0000 - 0x1fff
@@ -398,7 +379,7 @@ void a2600_base_state::switch_B_w(uint8_t data)
 {
 }
 
-WRITE_LINE_MEMBER(a2600_base_state::irq_callback)
+void a2600_base_state::irq_callback(int state)
 {
 }
 
@@ -639,24 +620,15 @@ void a2600_base_state::a2600_base_ntsc(machine_config &config)
 	TIA(config, "tia", m_xtal/114).add_route(ALL_OUTPUTS, "mono", 0.90);
 
 	/* devices */
-#if USE_NEW_RIOT
-	MOS6532_NEW(config, m_riot, m_xtal / 3);
+	MOS6532(config, m_riot, m_xtal / 3);
 	m_riot->pa_rd_callback().set(FUNC(a2600_state::switch_A_r));
 	m_riot->pa_wr_callback().set(FUNC(a2600_state::switch_A_w));
 	m_riot->pb_rd_callback().set_ioport("SWB");
 	m_riot->pb_wr_callback().set(FUNC(a2600_state::switch_B_w));
 	m_riot->irq_wr_callback().set(FUNC(a2600_state::irq_callback));
-#else
-	RIOT6532(config, m_riot, m_xtal / 3);
-	m_riot->in_pa_callback().set(FUNC(a2600_state::switch_A_r));
-	m_riot->out_pa_callback().set(FUNC(a2600_state::switch_A_w));
-	m_riot->in_pb_callback().set_ioport("SWB");
-	m_riot->out_pb_callback().set(FUNC(a2600_state::switch_B_w));
-	m_riot->irq_callback().set(FUNC(a2600_state::irq_callback));
-#endif
 
-	VCS_CONTROL_PORT(config, CONTROL1_TAG, vcs_control_port_devices, "joy");
-	VCS_CONTROL_PORT(config, CONTROL2_TAG, vcs_control_port_devices, "joy");
+	VCS_CONTROL_PORT(config, m_joy1, vcs_control_port_devices, "joy");
+	VCS_CONTROL_PORT(config, m_joy2, vcs_control_port_devices, "joy");
 }
 
 
@@ -681,24 +653,15 @@ void a2600_base_state::a2600_base_pal(machine_config &config)
 	TIA(config, "tia", m_xtal/114).add_route(ALL_OUTPUTS, "mono", 0.90);
 
 	/* devices */
-#if USE_NEW_RIOT
-	MOS6532_NEW(config, m_riot, m_xtal / 3);
+	MOS6532(config, m_riot, m_xtal / 3);
 	m_riot->pa_rd_callback().set(FUNC(a2600_state::switch_A_r));
 	m_riot->pa_wr_callback().set(FUNC(a2600_state::switch_A_w));
 	m_riot->pb_rd_callback().set_ioport("SWB");
 	m_riot->pb_wr_callback().set(FUNC(a2600_state::switch_B_w));
 	m_riot->irq_wr_callback().set(FUNC(a2600_state::irq_callback));
-#else
-	RIOT6532(config, m_riot, m_xtal / 3);
-	m_riot->in_pa_callback().set(FUNC(a2600_state::switch_A_r));
-	m_riot->out_pa_callback().set(FUNC(a2600_state::switch_A_w));
-	m_riot->in_pb_callback().set_ioport("SWB");
-	m_riot->out_pb_callback().set(FUNC(a2600_state::switch_B_w));
-	m_riot->irq_callback().set(FUNC(a2600_state::irq_callback));
-#endif
 
-	VCS_CONTROL_PORT(config, CONTROL1_TAG, vcs_control_port_devices, "joy");
-	VCS_CONTROL_PORT(config, CONTROL2_TAG, vcs_control_port_devices, "joy");
+	VCS_CONTROL_PORT(config, m_joy1, vcs_control_port_devices, "joy");
+	VCS_CONTROL_PORT(config, m_joy2, vcs_control_port_devices, "joy");
 }
 
 
@@ -708,7 +671,6 @@ void a2600_state::a2600(machine_config &config)
 	a2600_cartslot(config);
 	subdevice<software_list_device>("cart_list")->set_filter("NTSC");
 }
-
 
 void a2600p_state::a2600p(machine_config &config)
 {
@@ -728,6 +690,12 @@ void a2600_pop_state::a2600_pop(machine_config &config)
 void tvboy_state::tvboy(machine_config &config)
 {
 	a2600_base_pal(config);
+	m_maincpu->set_addrmap(AS_PROGRAM, &tvboy_state::tvboy_mem);
+}
+
+void tvboy_state::tvboyn(machine_config &config)
+{
+	a2600_base_ntsc(config);
 	m_maincpu->set_addrmap(AS_PROGRAM, &tvboy_state::tvboy_mem);
 }
 
@@ -819,6 +787,13 @@ ROM_START(tvboy)
 	ROM_LOAD("tvboy.bin", 0x00000, 0x80000, CRC(2f3d1d52) SHA1(fb26778434fade4cec28f82c53db4cc2f23b8b2b))
 ROM_END
 
+ROM_START(tvboyn)
+	ROM_REGION(0x2000, "maincpu", ROMREGION_ERASEFF)
+
+	ROM_REGION(0x80000, "mainrom", 0)
+	ROM_LOAD("ns-31_n_tv-bot_127g-nics.59874.bin", 0x00000, 0x80000, CRC(96744687) SHA1(47e7a01e635156d2dd6c7e1059653f286370537d))
+ROM_END
+
 ROM_START(tvboyii)
 	ROM_REGION(0x2000, "maincpu", ROMREGION_ERASEFF)
 
@@ -851,5 +826,6 @@ GAME( 198?, a2600_pop, 0,      a2600_pop, a2600_pop, a2600_pop_state, empty_init
 
 // Clones
 CONS( 199?, tvboy,   0,     0,      tvboy,   tvboy, tvboy_state,  empty_init, "Systema?", "TV Boy (PAL)",       MACHINE_SUPPORTS_SAVE ) // It's unknown what unit this came from. It could be Akor instead?
+CONS( 199?, tvboyn,  tvboy, 0,      tvboyn,  tvboy, tvboy_state,  empty_init, "Nics",     "TV Boy (Nics, NTSC)",MACHINE_SUPPORTS_SAVE )
 CONS( 199?, tvboyii, tvboy, 0,      tvboy,   tvboy, tvboy_state,  empty_init, "Systema",  "TV Boy II (PAL)",    MACHINE_SUPPORTS_SAVE )
 CONS( 1995, stvboy,  0,     0,      tvboy,   tvboy, tvboy_state,  empty_init, "Akor",     "Super TV Boy (PAL)", MACHINE_SUPPORTS_SAVE )

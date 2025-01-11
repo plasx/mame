@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
 /* Tecmo Mixer */
-#ifndef MAME_VIDEO_TECMO_MIX_H
-#define MAME_VIDEO_TECMO_MIX_H
+#ifndef MAME_TECMO_TECMO_MIX_H
+#define MAME_TECMO_TECMO_MIX_H
 
 #pragma once
 
@@ -48,8 +48,8 @@ public:
 	void set_revspritetile() { m_revspritetile = 3; }
 
 protected:
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// mixer shifts
 	int m_sprpri_shift;
@@ -84,4 +84,4 @@ DECLARE_DEVICE_TYPE(TECMO_MIXER, tecmo_mix_device)
 
 
 
-#endif // MAME_VIDEO_TECMO_MIX_H
+#endif // MAME_TECMO_TECMO_MIX_H

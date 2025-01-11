@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:Patrick Mackinlay
 
-#ifndef MAME_MACHINE_MCT_ADR_H
-#define MAME_MACHINE_MCT_ADR_H
+#ifndef MAME_MICROSOFT_MCT_ADR_H
+#define MAME_MICROSOFT_MCT_ADR_H
 
 #pragma once
 
@@ -22,10 +22,10 @@ public:
 	template <unsigned DMA> auto dma_r_cb() { return m_dma_r[DMA].bind(); }
 	template <unsigned DMA> auto dma_w_cb() { return m_dma_w[DMA].bind(); }
 
-	template <unsigned IRQ> DECLARE_WRITE_LINE_MEMBER(irq) { set_irq_line(IRQ, state); }
-	template <unsigned DRQ> DECLARE_WRITE_LINE_MEMBER(drq) { set_drq_line(DRQ, state); }
+	template <unsigned IRQ> void irq(int state) { set_irq_line(IRQ, state); }
+	template <unsigned DRQ> void drq(int state) { set_drq_line(DRQ, state); }
 
-	void map(address_map &map);
+	void map(address_map &map) ATTR_COLD;
 
 	u64 r4k_r(offs_t offset, u64 mem_mask) { return space(0).read_qword(offset << 3, mem_mask); }
 	void r4k_w(offs_t offset, u64 data, u64 mem_mask) { space(0).write_qword(offset << 3, data, mem_mask); }
@@ -36,18 +36,18 @@ public:
 
 protected:
 	// device_t overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	// device_memory_interface overrides
 	virtual space_config_vector memory_space_config() const override;
-	//virtual bool memory_translate(int spacenum, int intention, offs_t &address) override;
+	//virtual bool memory_translate(int spacenum, int intention, offs_t &address, address_space *&target_space) override;
 
 	u32 dma_r(offs_t offset, u32 mem_mask);
 	void dma_w(offs_t offset, u32 data, u32 mem_mask);
 
 private:
-	void dma(address_map &map);
+	void dma(address_map &map) ATTR_COLD;
 
 	void set_irq_line(int number, int state);
 	void set_drq_line(int channel, int state);
@@ -161,4 +161,4 @@ private:
 // device type definition
 DECLARE_DEVICE_TYPE(MCT_ADR, mct_adr_device)
 
-#endif // MAME_MACHINE_MCT_ADR_H
+#endif // MAME_MICROSOFT_MCT_ADR_H

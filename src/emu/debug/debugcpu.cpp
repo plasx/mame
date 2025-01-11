@@ -20,11 +20,11 @@
 #include "debugger.h"
 #include "emuopts.h"
 #include "fileio.h"
+#include "main.h"
 #include "screen.h"
 #include "uiinput.h"
 
 #include "corestr.h"
-#include "coreutil.h"
 #include "osdepend.h"
 #include "xmlfile.h"
 
@@ -93,7 +93,7 @@ debugger_cpu::debugger_cpu(running_machine &machine)
 	for (int regnum = 0; regnum < NUM_TEMP_VARIABLES; regnum++)
 	{
 		char symname[10];
-		sprintf(symname, "temp%d", regnum);
+		snprintf(symname, 10, "temp%d", regnum);
 		m_symtable->add(symname, symbol_table::READ_WRITE, &m_tempvar[regnum]);
 	}
 }
@@ -387,7 +387,7 @@ void debugger_cpu::go_vblank()
 	m_execution_state = exec_state::RUNNING;
 }
 
-void debugger_cpu::halt_on_next_instruction(device_t *device, util::format_argument_pack<std::ostream> &&args)
+void debugger_cpu::halt_on_next_instruction(device_t *device, util::format_argument_pack<char> &&args)
 {
 	// if something is pending on this CPU already, ignore this request
 	if (device == m_breakcpu)
@@ -408,6 +408,70 @@ void debugger_cpu::halt_on_next_instruction(device_t *device, util::format_argum
 		m_breakcpu = device;
 	}
 }
+
+
+//-------------------------------------------------
+//  wait_for_debugger - pause during execution to
+//  allow debugging
+//-------------------------------------------------
+
+void debugger_cpu::wait_for_debugger(device_t &device)
+{
+	assert(is_stopped());
+	assert(within_instruction_hook());
+
+	bool firststop = true;
+
+	// load comments if we haven't yet
+	ensure_comments_loaded();
+
+	// reset any transient state
+	reset_transient_flags();
+	set_break_cpu(nullptr);
+
+	// remember the last visible CPU in the debugger
+	m_machine.debugger().console().set_visible_cpu(&device);
+
+	// update all views
+	m_machine.debug_view().update_all();
+	m_machine.debugger().refresh_display();
+
+	// wait for the debugger; during this time, disable sound output
+	m_machine.sound().debugger_mute(true);
+	while (is_stopped())
+	{
+		// flush any pending updates before waiting again
+		m_machine.debug_view().flush_osd_updates();
+
+		emulator_info::periodic_check();
+
+		// clear the memory modified flag and wait
+		set_memory_modified(false);
+		if (m_machine.debug_flags & DEBUG_FLAG_OSD_ENABLED)
+			m_machine.osd().wait_for_debugger(device, firststop);
+		firststop = false;
+
+		// if something modified memory, update the screen
+		if (memory_modified())
+		{
+			m_machine.debug_view().update_all(DVT_DISASSEMBLY);
+			m_machine.debug_view().update_all(DVT_STATE);
+			m_machine.debugger().refresh_display();
+		}
+
+		// check for commands in the source file
+		m_machine.debugger().console().process_source_file();
+
+		// if an event got scheduled, resume
+		if (m_machine.scheduled_event_pending())
+			set_execution_running();
+	}
+	m_machine.sound().debugger_mute(false);
+
+	// remember the last visible CPU in the debugger
+	m_machine.debugger().console().set_visible_cpu(&device);
+}
+
 
 //**************************************************************************
 //  DEVICE DEBUG
@@ -435,6 +499,7 @@ device_debug::device_debug(device_t &device)
 	, m_endexectime(attotime::zero)
 	, m_total_cycles(0)
 	, m_last_total_cycles(0)
+	, m_was_waiting(true)
 	, m_pc_history_index(0)
 	, m_pc_history_valid(0)
 	, m_bplist()
@@ -636,14 +701,52 @@ void device_debug::stop_hook()
 //  acknowledged
 //-------------------------------------------------
 
-void device_debug::interrupt_hook(int irqline)
+void device_debug::interrupt_hook(int irqline, offs_t pc)
 {
+	// CPU is presumably no longer waiting if it acknowledges an interrupt
+	if (m_was_waiting)
+	{
+		m_was_waiting = false;
+		compute_debug_flags();
+	}
+
 	// see if this matches a pending interrupt request
 	if ((m_flags & DEBUG_FLAG_STOP_INTERRUPT) != 0 && (m_stopirq == -1 || m_stopirq == irqline))
 	{
 		m_device.machine().debugger().cpu().set_execution_stopped();
-		m_device.machine().debugger().console().printf("Stopped on interrupt (CPU '%s', IRQ %d)\n", m_device.tag(), irqline);
+		const address_space &space = m_memory->space(AS_PROGRAM);
+		if (space.is_octal())
+			m_device.machine().debugger().console().printf("Stopped on interrupt (CPU '%s', IRQ %d, PC=%0*o)\n", m_device.tag(), irqline, (space.logaddr_width() + 2) / 3, pc);
+		else
+			m_device.machine().debugger().console().printf("Stopped on interrupt (CPU '%s', IRQ %d, PC=%0*X)\n", m_device.tag(), irqline, space.logaddrchars(), pc);
 		compute_debug_flags();
+	}
+
+	if (m_trace != nullptr)
+		m_trace->interrupt_update(irqline, pc);
+
+	if ((m_flags & (DEBUG_FLAG_STEPPING_OVER | DEBUG_FLAG_STEPPING_OUT | DEBUG_FLAG_STEPPING_BRANCH)) != 0)
+	{
+		if ((m_flags & DEBUG_FLAG_CALL_IN_PROGRESS) == 0)
+		{
+			if ((m_flags & DEBUG_FLAG_TEST_IN_PROGRESS) != 0)
+			{
+				if ((m_stepaddr == pc && (m_flags & DEBUG_FLAG_STEPPING_BRANCH_FALSE) != 0) ||
+					(m_stepaddr != pc && m_delay_steps == 1 && (m_flags & (DEBUG_FLAG_STEPPING_OUT | DEBUG_FLAG_STEPPING_BRANCH_TRUE)) != 0))
+				{
+					// step over the interrupt and then call it finished
+					m_flags = (m_flags & ~(DEBUG_FLAG_TEST_IN_PROGRESS | DEBUG_FLAG_STEPPING_ANY)) | DEBUG_FLAG_STEPPING_OVER;
+					m_stepsleft = 1;
+				}
+			}
+
+			// remember the interrupt return address
+			m_flags |= DEBUG_FLAG_CALL_IN_PROGRESS;
+			m_stepaddr = pc;
+		}
+
+		m_flags &= ~DEBUG_FLAG_TEST_IN_PROGRESS;
+		m_delay_steps = 0;
 	}
 }
 
@@ -674,7 +777,7 @@ void device_debug::exception_hook(int exception)
 		if (matched)
 		{
 			m_device.machine().debugger().cpu().set_execution_stopped();
-			m_device.machine().debugger().console().printf("Stopped on exception (CPU '%s', exception %X, PC=%X)\n", m_device.tag(), exception, m_state->pcbase());
+			m_device.machine().debugger().console().printf("Stopped on exception (CPU '%s', exception %X, PC=%s)\n", m_device.tag(), exception, m_state->state_string(STATE_GENPC));
 			compute_debug_flags();
 		}
 	}
@@ -700,7 +803,7 @@ void device_debug::exception_hook(int exception)
 				if (debugcpu.is_stopped())
 				{
 					debugcpu.set_execution_stopped();
-					m_device.machine().debugger().console().printf("Stopped at exception point %X (CPU '%s', PC=%X)\n", ep.m_index, m_device.tag(), exception, m_state->pcbase());
+					m_device.machine().debugger().console().printf("Stopped at exception point %X (CPU '%s', PC=%s)\n", ep.m_index, m_device.tag(), m_state->state_string(STATE_GENPC));
 					compute_debug_flags();
 				}
 				break;
@@ -741,6 +844,7 @@ void device_debug::privilege_hook()
 	}
 }
 
+
 //-------------------------------------------------
 //  instruction_hook - called by the CPU cores
 //  before executing each instruction
@@ -749,7 +853,7 @@ void device_debug::privilege_hook()
 void device_debug::instruction_hook(offs_t curpc)
 {
 	running_machine &machine = m_device.machine();
-	debugger_cpu& debugcpu = machine.debugger().cpu();
+	debugger_cpu &debugcpu = machine.debugger().cpu();
 
 	// note that we are in the debugger code
 	debugcpu.set_within_instruction(true);
@@ -763,6 +867,11 @@ void device_debug::instruction_hook(offs_t curpc)
 	// update total cycles
 	m_last_total_cycles = m_total_cycles;
 	m_total_cycles = m_exec->total_cycles();
+	if (m_was_waiting)
+	{
+		m_was_waiting = false;
+		compute_debug_flags();
+	}
 
 	// are we tracking our recent pc visits?
 	if (m_track_pc)
@@ -798,7 +907,7 @@ void device_debug::instruction_hook(offs_t curpc)
 				m_delay_steps--;
 				if (m_delay_steps == 0)
 				{
-					// branch taken or subroutine entered (TODO: interrupt acknowledgment or interleaved multithreading can falsely trigger this)
+					// branch taken or subroutine entered (TODO: interleaved multithreading can falsely trigger this)
 					if ((m_flags & DEBUG_FLAG_TEST_IN_PROGRESS) != 0 && (m_flags & (DEBUG_FLAG_STEPPING_OUT | DEBUG_FLAG_STEPPING_BRANCH_TRUE)) != 0)
 					{
 						debugcpu.set_execution_stopped();
@@ -834,7 +943,7 @@ void device_debug::instruction_hook(offs_t curpc)
 	}
 
 	// handle breakpoints
-	if (!debugcpu.is_stopped() && (m_flags & (DEBUG_FLAG_STOP_TIME | DEBUG_FLAG_STOP_PC | DEBUG_FLAG_LIVE_BP)) != 0)
+	if (!debugcpu.is_stopped() && (m_flags & (DEBUG_FLAG_STOP_TIME | DEBUG_FLAG_STOP_PC | DEBUG_FLAG_LIVE_BP | DEBUG_FLAG_LIVE_RP)) != 0)
 	{
 		// see if we hit a target time
 		if ((m_flags & DEBUG_FLAG_STOP_TIME) != 0 && machine.time() >= m_stoptime)
@@ -846,73 +955,76 @@ void device_debug::instruction_hook(offs_t curpc)
 		// check the temp running breakpoint and break if we hit it
 		else if ((m_flags & DEBUG_FLAG_STOP_PC) != 0 && m_stopaddr == curpc)
 		{
-			machine.debugger().console().printf("Stopped at temporary breakpoint %X on CPU '%s'\n", m_stopaddr, m_device.tag());
+			if (is_octal())
+				machine.debugger().console().printf("Stopped at temporary breakpoint %o on CPU '%s'\n", m_stopaddr, m_device.tag());
+			else
+				machine.debugger().console().printf("Stopped at temporary breakpoint %X on CPU '%s'\n", m_stopaddr, m_device.tag());
 			debugcpu.set_execution_stopped();
 		}
 
 		// check for execution breakpoints
-		else if ((m_flags & DEBUG_FLAG_LIVE_BP) != 0)
-			breakpoint_check(curpc);
+		else
+		{
+			if ((m_flags & DEBUG_FLAG_LIVE_BP) != 0)
+				breakpoint_check(curpc);
+			if ((m_flags & DEBUG_FLAG_LIVE_RP) != 0)
+				registerpoint_check();
+		}
+	}
+
+	// if we are supposed to halt, do it now
+	if (debugcpu.is_stopped())
+		debugcpu.wait_for_debugger(m_device);
+
+	// handle step out/over on the instruction we are about to execute
+	if ((m_flags & (DEBUG_FLAG_STEPPING_OVER | DEBUG_FLAG_STEPPING_OUT | DEBUG_FLAG_STEPPING_BRANCH)) != 0 && (m_flags & (DEBUG_FLAG_CALL_IN_PROGRESS | DEBUG_FLAG_TEST_IN_PROGRESS)) == 0)
+		prepare_for_step_overout(m_state->pcbase());
+
+	// no longer in debugger code
+	debugcpu.set_within_instruction(false);
+}
+
+
+//-------------------------------------------------
+//  wait_hook - called by the CPU cores while
+//  waiting indefinitely for some kind of event
+//-------------------------------------------------
+
+void device_debug::wait_hook()
+{
+	running_machine &machine = m_device.machine();
+	debugger_cpu &debugcpu = machine.debugger().cpu();
+
+	// note that we are in the debugger code
+	debugcpu.set_within_instruction(true);
+
+	// update total cycles
+	m_last_total_cycles = m_total_cycles;
+	m_total_cycles = m_exec->total_cycles();
+
+	// handle registerpoints (but not breakpoints)
+	if (!debugcpu.is_stopped() && (m_flags & (DEBUG_FLAG_STOP_TIME | DEBUG_FLAG_LIVE_RP)) != 0)
+	{
+		// see if we hit a target time
+		if ((m_flags & DEBUG_FLAG_STOP_TIME) != 0 && machine.time() >= m_stoptime)
+		{
+			machine.debugger().console().printf("Stopped at time interval %.1g\n", machine.time().as_double());
+			debugcpu.set_execution_stopped();
+		}
+		else if ((m_flags & DEBUG_FLAG_LIVE_RP) != 0)
+			registerpoint_check();
 	}
 
 	// if we are supposed to halt, do it now
 	if (debugcpu.is_stopped())
 	{
-		bool firststop = true;
-
-		// load comments if we haven't yet
-		debugcpu.ensure_comments_loaded();
-
-		// reset any transient state
-		debugcpu.reset_transient_flags();
-		debugcpu.set_break_cpu(nullptr);
-
-		// remember the last visible CPU in the debugger
-		machine.debugger().console().set_visible_cpu(&m_device);
-
-		// update all views
-		machine.debug_view().update_all();
-		machine.debugger().refresh_display();
-
-		// wait for the debugger; during this time, disable sound output
-		m_device.machine().sound().debugger_mute(true);
-		while (debugcpu.is_stopped())
+		if (!m_was_waiting)
 		{
-			// flush any pending updates before waiting again
-			machine.debug_view().flush_osd_updates();
-
-			emulator_info::periodic_check();
-
-			// clear the memory modified flag and wait
-			debugcpu.set_memory_modified(false);
-			if (machine.debug_flags & DEBUG_FLAG_OSD_ENABLED)
-				machine.osd().wait_for_debugger(m_device, firststop);
-			firststop = false;
-
-			// if something modified memory, update the screen
-			if (debugcpu.memory_modified())
-			{
-				machine.debug_view().update_all(DVT_DISASSEMBLY);
-				machine.debug_view().update_all(DVT_STATE);
-				machine.debugger().refresh_display();
-			}
-
-			// check for commands in the source file
-			machine.debugger().console().process_source_file();
-
-			// if an event got scheduled, resume
-			if (machine.scheduled_event_pending())
-				debugcpu.set_execution_running();
+			machine.debugger().console().printf("CPU waiting after PC=%s\n", m_state->state_string(STATE_GENPCBASE));
+			m_was_waiting = true;
 		}
-		machine.sound().debugger_mute(false);
-
-		// remember the last visible CPU in the debugger
-		machine.debugger().console().set_visible_cpu(&m_device);
+		debugcpu.wait_for_debugger(m_device);
 	}
-
-	// handle step out/over on the instruction we are about to execute
-	if ((m_flags & (DEBUG_FLAG_STEPPING_OVER | DEBUG_FLAG_STEPPING_OUT | DEBUG_FLAG_STEPPING_BRANCH)) != 0 && (m_flags & (DEBUG_FLAG_CALL_IN_PROGRESS | DEBUG_FLAG_TEST_IN_PROGRESS)) == 0)
-		prepare_for_step_overout(m_state->pcbase());
 
 	// no longer in debugger code
 	debugcpu.set_within_instruction(false);
@@ -976,6 +1088,7 @@ void device_debug::single_step(int numsteps)
 	m_stepsleft = numsteps;
 	m_delay_steps = 0;
 	m_flags |= DEBUG_FLAG_STEPPING;
+	m_flags &= ~(DEBUG_FLAG_CALL_IN_PROGRESS | DEBUG_FLAG_TEST_IN_PROGRESS);
 	m_device.machine().debugger().cpu().set_execution_running();
 }
 
@@ -993,6 +1106,7 @@ void device_debug::single_step_over(int numsteps)
 	m_stepsleft = numsteps;
 	m_delay_steps = 0;
 	m_flags |= DEBUG_FLAG_STEPPING_OVER;
+	m_flags &= ~(DEBUG_FLAG_CALL_IN_PROGRESS | DEBUG_FLAG_TEST_IN_PROGRESS);
 	m_device.machine().debugger().cpu().set_execution_running();
 }
 
@@ -1011,6 +1125,7 @@ void device_debug::single_step_out()
 	m_stepsleft = 100;
 	m_delay_steps = 0;
 	m_flags |= DEBUG_FLAG_STEPPING_OUT;
+	m_flags &= ~(DEBUG_FLAG_CALL_IN_PROGRESS | DEBUG_FLAG_TEST_IN_PROGRESS);
 	m_device.machine().debugger().cpu().set_execution_running();
 }
 
@@ -1126,6 +1241,7 @@ void device_debug::go_branch(bool sense, const char *condition)
 	m_stepsleft = 100;
 	m_delay_steps = 0;
 	m_flags |= sense ? DEBUG_FLAG_STEPPING_BRANCH_TRUE : DEBUG_FLAG_STEPPING_BRANCH_FALSE;
+	m_flags &= ~(DEBUG_FLAG_CALL_IN_PROGRESS | DEBUG_FLAG_TEST_IN_PROGRESS);
 	m_device.machine().debugger().cpu().set_execution_running();
 }
 
@@ -1137,7 +1253,7 @@ void device_debug::go_branch(bool sense, const char *condition)
 //  to templates in C++ being janky as all get out
 //-------------------------------------------------
 
-void device_debug::halt_on_next_instruction_impl(util::format_argument_pack<std::ostream> &&args)
+void device_debug::halt_on_next_instruction_impl(util::format_argument_pack<char> &&args)
 {
 	assert(m_exec != nullptr);
 	m_device.machine().debugger().cpu().halt_on_next_instruction(&m_device, std::move(args));
@@ -1688,7 +1804,7 @@ u32 device_debug::compute_opcode_crc32(offs_t pc) const
 	buffer.data_get(pc, dasmresult & util::disasm_interface::LENGTHMASK, true, opbuf);
 
 	// return a CRC of the exact count of opcode bytes
-	return core_crc32(0, &opbuf[0], opbuf.size());
+	return util::crc32_creator::simple(&opbuf[0], opbuf.size());
 }
 
 
@@ -1715,7 +1831,7 @@ void device_debug::trace(std::unique_ptr<std::ostream> &&file, bool trace_over, 
 void device_debug::compute_debug_flags()
 {
 	running_machine &machine = m_device.machine();
-	debugger_cpu& debugcpu = machine.debugger().cpu();
+	debugger_cpu &debugcpu = machine.debugger().cpu();
 
 	// clear out global flags by default, keep DEBUG_FLAG_OSD_ENABLED
 	machine.debug_flags &= DEBUG_FLAG_OSD_ENABLED;
@@ -1731,7 +1847,7 @@ void device_debug::compute_debug_flags()
 
 	// if we're tracking history, or we're hooked, or stepping, or stopping at a breakpoint
 	// make sure we call the hook
-	if ((m_flags & (DEBUG_FLAG_HISTORY | DEBUG_FLAG_STEPPING_ANY | DEBUG_FLAG_STOP_PC | DEBUG_FLAG_LIVE_BP)) != 0)
+	if ((m_flags & (DEBUG_FLAG_HISTORY | DEBUG_FLAG_STEPPING_ANY | DEBUG_FLAG_STOP_PC | DEBUG_FLAG_LIVE_BP | DEBUG_FLAG_LIVE_RP)) != 0)
 		machine.debug_flags |= DEBUG_FLAG_CALL_HOOK;
 
 	// also call if we are tracing
@@ -1740,6 +1856,10 @@ void device_debug::compute_debug_flags()
 
 	// if we are stopping at a particular time and that time is within the current timeslice, we need to be called
 	if ((m_flags & DEBUG_FLAG_STOP_TIME) && m_endexectime <= m_stoptime)
+		machine.debug_flags |= DEBUG_FLAG_CALL_HOOK;
+
+	// if we were waiting, call if only to clear
+	if (m_was_waiting)
 		machine.debug_flags |= DEBUG_FLAG_CALL_HOOK;
 }
 
@@ -1821,7 +1941,7 @@ void device_debug::prepare_for_step_overout(offs_t pc)
 void device_debug::breakpoint_update_flags()
 {
 	// see if there are any enabled breakpoints
-	m_flags &= ~DEBUG_FLAG_LIVE_BP;
+	m_flags &= ~(DEBUG_FLAG_LIVE_BP | DEBUG_FLAG_LIVE_RP);
 	for (auto &bpp : m_bplist)
 		if (bpp.second->m_enabled)
 		{
@@ -1829,16 +1949,13 @@ void device_debug::breakpoint_update_flags()
 			break;
 		}
 
-	if (!(m_flags & DEBUG_FLAG_LIVE_BP))
+	// see if there are any enabled registerpoints
+	for (debug_registerpoint &rp : m_rplist)
 	{
-		// see if there are any enabled registerpoints
-		for (debug_registerpoint &rp : m_rplist)
+		if (rp.m_enabled)
 		{
-			if (rp.m_enabled)
-			{
-				m_flags |= DEBUG_FLAG_LIVE_BP;
-				break;
-			}
+			m_flags |= DEBUG_FLAG_LIVE_RP;
+			break;
 		}
 	}
 
@@ -1855,8 +1972,6 @@ void device_debug::breakpoint_update_flags()
 
 void device_debug::breakpoint_check(offs_t pc)
 {
-	debugger_cpu& debugcpu = m_device.machine().debugger().cpu();
-
 	// see if we match
 	auto bpitp = m_bplist.equal_range(pc);
 	for (auto bpit = bpitp.first; bpit != bpitp.second; ++bpit)
@@ -1864,6 +1979,8 @@ void device_debug::breakpoint_check(offs_t pc)
 		debug_breakpoint &bp = *bpit->second;
 		if (bp.hit(pc))
 		{
+			debugger_cpu &debugcpu = m_device.machine().debugger().cpu();
+
 			// halt in the debugger by default
 			debugcpu.set_execution_stopped();
 
@@ -1880,12 +1997,23 @@ void device_debug::breakpoint_check(offs_t pc)
 			break;
 		}
 	}
+}
 
+
+//-------------------------------------------------
+//  registerpoint_check - check the registerpoints
+//  for a given device
+//-------------------------------------------------
+
+void device_debug::registerpoint_check()
+{
 	// see if we have any matching registerpoints
 	for (debug_registerpoint &rp : m_rplist)
 	{
 		if (rp.hit())
 		{
+			debugger_cpu &debugcpu = m_device.machine().debugger().cpu();
+
 			// halt in the debugger by default
 			debugcpu.set_execution_stopped();
 
@@ -2011,10 +2139,36 @@ void device_debug::tracer::update(offs_t pc)
 
 
 //-------------------------------------------------
+//  interrupt_update - log interrupt to tracefile
+//-------------------------------------------------
+
+void device_debug::tracer::interrupt_update(int irqline, offs_t pc)
+{
+	if (m_trace_over)
+	{
+		if (m_trace_over_target != ~0)
+			return;
+		m_trace_over_target = pc;
+	}
+
+	// if we just finished looping, indicate as much
+	*m_file << "\n";
+	if (m_detect_loops && m_loops != 0)
+	{
+		util::stream_format(*m_file, "   (loops for %d instructions)\n", m_loops);
+		m_loops = 0;
+	}
+
+	util::stream_format(*m_file, "   (interrupted at %s, IRQ %d)\n\n", debug_disasm_buffer(m_debug.device()).pc_to_string(pc), irqline);
+	m_file->flush();
+}
+
+
+//-------------------------------------------------
 //  vprintf - generic print to the trace file
 //-------------------------------------------------
 
-void device_debug::tracer::vprintf(util::format_argument_pack<std::ostream> const &args)
+void device_debug::tracer::vprintf(util::format_argument_pack<char> const &args)
 {
 	// pass through to the file
 	util::stream_format(*m_file, args);

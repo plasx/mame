@@ -11,15 +11,11 @@
 #include "emu.h"
 #include "amiga.h"
 
+#define LOG_SPRITE_DMA (1U << 1)
 
+#define VERBOSE (0)
+#include "logmacro.h"
 
-/*************************************
- *
- *  Debugging
- *
- *************************************/
-
-#define LOG_SPRITE_DMA      0
 
 /*************************************
  *
@@ -105,6 +101,7 @@ VIDEO_START_MEMBER( amiga_state, amiga )
 	m_sprite_ctl_written = 0;
 
 	m_screen->register_screen_bitmap(m_flickerfixer);
+	m_screen->register_screen_bitmap(m_scanline_bitmap);
 }
 
 
@@ -128,7 +125,7 @@ uint32_t amiga_state::amiga_gethvpos()
 
 	/* if there's no latched position, or if we are in the active display area */
 	/* but before the latching point, return the live HV position */
-	if ((CUSTOM_REG(REG_BPLCON0) & 0x0008) == 0 || latchedpos == 0 || (m_last_scanline >= 20 && hvpos < latchedpos))
+	if (!BIT(CUSTOM_REG(REG_BPLCON0), 3) || latchedpos == 0 || (m_last_scanline >= 20 && hvpos < latchedpos))
 		return hvpos;
 
 	/* otherwise, return the latched position (cfr. lightgun input in alg.cpp, lightpen) */
@@ -156,7 +153,7 @@ void amiga_state::set_genlock_color(uint16_t color)
 
 void amiga_state::sprite_dma_reset(int which)
 {
-	if (LOG_SPRITE_DMA) logerror("sprite %d dma reset\n", which );
+	LOGMASKED(LOG_SPRITE_DMA, "sprite %d dma reset\n", which );
 	m_sprite_dma_reload_mask |= 1 << which;
 	m_sprite_dma_live_mask |= 1 << which;
 }
@@ -164,7 +161,7 @@ void amiga_state::sprite_dma_reset(int which)
 
 void amiga_state::sprite_enable_comparitor(int which, int enable)
 {
-	if (LOG_SPRITE_DMA) logerror("sprite %d comparitor %sable\n", which, enable ? "en" : "dis" );
+	LOGMASKED(LOG_SPRITE_DMA, "sprite %d comparitor %sable\n", which, enable ? "en" : "dis" );
 	if (enable)
 	{
 		m_sprite_comparitor_enable_mask |= 1 << which;
@@ -190,66 +187,65 @@ void amiga_state::fetch_sprite_data(int scanline, int sprite)
 	CUSTOM_REG(REG_SPR0DATA + 4 * sprite) = read_chip_ram(CUSTOM_REG_LONG(REG_SPR0PTH + 2 * sprite) + 0);
 	CUSTOM_REG(REG_SPR0DATB + 4 * sprite) = read_chip_ram(CUSTOM_REG_LONG(REG_SPR0PTH + 2 * sprite) + 2);
 	CUSTOM_REG_LONG(REG_SPR0PTH + 2 * sprite) += 4;
-	if (LOG_SPRITE_DMA) logerror("%3d:sprite %d fetch: data=%04X-%04X\n", scanline, sprite, CUSTOM_REG(REG_SPR0DATA + 4 * sprite), CUSTOM_REG(REG_SPR0DATB + 4 * sprite));
+	LOGMASKED(LOG_SPRITE_DMA, "%3d:sprite %d fetch: data=%04X-%04X\n", scanline, sprite, CUSTOM_REG(REG_SPR0DATA + 4 * sprite), CUSTOM_REG(REG_SPR0DATB + 4 * sprite));
 }
 
-void amiga_state::update_sprite_dma(int scanline)
+void amiga_state::update_sprite_dma(int scanline, int num)
 {
 	int dmaenable = (CUSTOM_REG(REG_DMACON) & (DMACON_SPREN | DMACON_DMAEN)) == (DMACON_SPREN | DMACON_DMAEN);
-	int num, maxdma;
+	int maxdma;
 
 	/* channels are limited by DDFSTART */
 	maxdma = (CUSTOM_REG(REG_DDFSTRT) - 0x14) / 4;
 	if (maxdma > 8)
 		maxdma = 8;
 
-	/* loop over sprite channels */
-	for (num = 0; num < maxdma; num++)
+	if (num >= maxdma)
+		return;
+
+	int bitmask = 1 << num;
+	int vstart, vstop;
+
+	/* if we are == VSTOP, fetch new control words */
+	if (dmaenable && (m_sprite_dma_live_mask & bitmask) && (m_sprite_dma_reload_mask & bitmask))
 	{
-		int bitmask = 1 << num;
-		int vstart, vstop;
+		/* disable the sprite */
+		m_sprite_comparitor_enable_mask &= ~bitmask;
+		m_sprite_dma_reload_mask &= ~bitmask;
 
-		/* if we are == VSTOP, fetch new control words */
-		if (dmaenable && (m_sprite_dma_live_mask & bitmask) && (m_sprite_dma_reload_mask & bitmask))
-		{
-			/* disable the sprite */
-			m_sprite_comparitor_enable_mask &= ~bitmask;
-			m_sprite_dma_reload_mask &= ~bitmask;
+		/* fetch data into the control words */
+		CUSTOM_REG(REG_SPR0POS + 4 * num) = read_chip_ram(CUSTOM_REG_LONG(REG_SPR0PTH + 2 * num) + 0);
+		CUSTOM_REG(REG_SPR0CTL + 4 * num) = read_chip_ram(CUSTOM_REG_LONG(REG_SPR0PTH + 2 * num) + 2);
+		CUSTOM_REG_LONG(REG_SPR0PTH + 2 * num) += 4;
+		LOGMASKED(LOG_SPRITE_DMA, "%3d:sprite %d fetch: pos=%04X ctl=%04X\n", scanline, num, CUSTOM_REG(REG_SPR0POS + 4 * num), CUSTOM_REG(REG_SPR0CTL + 4 * num));
+	}
 
-			/* fetch data into the control words */
-			CUSTOM_REG(REG_SPR0POS + 4 * num) = read_chip_ram(CUSTOM_REG_LONG(REG_SPR0PTH + 2 * num) + 0);
-			CUSTOM_REG(REG_SPR0CTL + 4 * num) = read_chip_ram(CUSTOM_REG_LONG(REG_SPR0PTH + 2 * num) + 2);
-			CUSTOM_REG_LONG(REG_SPR0PTH + 2 * num) += 4;
-			if (LOG_SPRITE_DMA) logerror("%3d:sprite %d fetch: pos=%04X ctl=%04X\n", scanline, num, CUSTOM_REG(REG_SPR0POS + 4 * num), CUSTOM_REG(REG_SPR0CTL + 4 * num));
-		}
+	/* compute vstart/vstop */
+	vstart = (CUSTOM_REG(REG_SPR0POS + 4 * num) >> 8) | ((CUSTOM_REG(REG_SPR0CTL + 4 * num) << 6) & 0x100);
+	vstop = (CUSTOM_REG(REG_SPR0CTL + 4 * num) >> 8) | ((CUSTOM_REG(REG_SPR0CTL + 4 * num) << 7) & 0x100);
 
-		/* compute vstart/vstop */
-		vstart = (CUSTOM_REG(REG_SPR0POS + 4 * num) >> 8) | ((CUSTOM_REG(REG_SPR0CTL + 4 * num) << 6) & 0x100);
-		vstop = (CUSTOM_REG(REG_SPR0CTL + 4 * num) >> 8) | ((CUSTOM_REG(REG_SPR0CTL + 4 * num) << 7) & 0x100);
+	/* if we hit vstart, enable the comparitor */
+	if (scanline == vstart)
+	{
+		m_sprite_comparitor_enable_mask |= 1 << num;
+		LOGMASKED(LOG_SPRITE_DMA, "%3d:sprite %d comparitor enable\n", scanline, num);
+	}
 
-		/* if we hit vstart, enable the comparitor */
-		if (scanline == vstart)
-		{
-			m_sprite_comparitor_enable_mask |= 1 << num;
-			if (LOG_SPRITE_DMA) logerror("%3d:sprite %d comparitor enable\n", scanline, num);
-		}
+	/* if we hit vstop, disable the comparitor and trigger a reload for the next scanline */
+	if (scanline == vstop)
+	{
+		m_sprite_ctl_written &= ~bitmask;
+		m_sprite_comparitor_enable_mask &= ~bitmask;
+		m_sprite_dma_reload_mask |= 1 << num;
+		CUSTOM_REG(REG_SPR0DATA + 4 * num) = 0;     /* just a guess */
+		CUSTOM_REG(REG_SPR0DATB + 4 * num) = 0;
+		LOGMASKED(LOG_SPRITE_DMA, "%3d:sprite %d comparitor disable, prepare for reload\n", scanline, num);
+	}
 
-		/* if we hit vstop, disable the comparitor and trigger a reload for the next scanline */
-		if (scanline == vstop)
-		{
-			m_sprite_ctl_written &= ~bitmask;
-			m_sprite_comparitor_enable_mask &= ~bitmask;
-			m_sprite_dma_reload_mask |= 1 << num;
-			CUSTOM_REG(REG_SPR0DATA + 4 * num) = 0;     /* just a guess */
-			CUSTOM_REG(REG_SPR0DATB + 4 * num) = 0;
-			if (LOG_SPRITE_DMA) logerror("%3d:sprite %d comparitor disable, prepare for reload\n", scanline, num);
-		}
-
-		/* fetch data if this sprite is enabled */
-		if (dmaenable && (m_sprite_dma_live_mask & bitmask) && (m_sprite_comparitor_enable_mask & bitmask))
-		{
-			fetch_sprite_data(scanline, num);
-		}
+	/* fetch data if this sprite is enabled */
+	if (dmaenable && (m_sprite_dma_live_mask & bitmask) && (m_sprite_comparitor_enable_mask & bitmask))
+	{
+		fetch_sprite_data(scanline, num);
 	}
 }
 
@@ -474,6 +470,7 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 	int hires = 0, dualpf = 0, ham = 0;
 	int pf1pri = 0, pf2pri = 0;
 	int planes = 0;
+	int raw_scanline = 0;
 
 	uint32_t *dst = nullptr;
 	int ebitoffs = 0, obitoffs = 0;
@@ -482,6 +479,7 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 	int next_copper_x;
 	int pl;
 	const int defbitoffs = 15;
+	bool bitplane_dma_enabled = false;
 
 	int save_scanline = scanline;
 
@@ -517,17 +515,18 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 			// otherwise just render the contents of the previous frame's scanline
 			int shift = (m_previous_lof == lof) ? 1 : 0;
 
+			if ((scanline - shift) < 0)
+				return;
 			std::copy_n(&m_flickerfixer.pix(scanline - shift), amiga_state::SCREEN_WIDTH, &bitmap.pix(scanline));
 			return;
 		}
 	}
 
+	raw_scanline = scanline;
+
 	scanline /= 2;
 
 	m_last_scanline = scanline;
-
-	/* update sprite data fetching */
-	update_sprite_dma(scanline);
 
 	/* all sprites off at the start of the line */
 	memset(m_sprite_remain, 0, sizeof(m_sprite_remain));
@@ -537,6 +536,7 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 		CUSTOM_REG(REG_COLOR00) = m_genlock_color;
 
 	/* loop over the line */
+	// TODO: copper runs on odd timeslots
 	next_copper_x = 0;
 	// FIXME: without the add this increment will skip bitplane ops
 	// ddf_stop_pixel_max = 0xd8 * 2 = 432 + 17 + 15 + 1(*) = 465 > width / 2 (455)
@@ -545,26 +545,31 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 	// - no separation of video and logic models;
 	// - the offsets we are applying to DDFSTRT and DDFSTOP, they mustn't be right (copper timings?);
 	// - ditto for DIW related values, they are offset in far too many places;
-	for (int x = 0; x < (amiga_state::SCREEN_WIDTH / 2) + 10; x++)
+	// - Twintris intro/suprfrog expects +11 on fast scrolling section (glitches at sides)
+	for (int x = 0; x < (amiga_state::SCREEN_WIDTH / 2) + 11; x++)
 	{
 		int sprpix;
+		const bool out_of_beam = x >= amiga_state::SCREEN_WIDTH / 2;
 
 		/* time to execute the copper? */
-		if (x == next_copper_x)
+		if (x == next_copper_x && !out_of_beam)
 		{
 			/* execute the next batch, restoring and re-saving color 0 around it */
 			CUSTOM_REG(REG_COLOR00) = save_color0;
+
+			planes = (CUSTOM_REG(REG_BPLCON0) & (BPLCON0_BPU0 | BPLCON0_BPU1 | BPLCON0_BPU2)) >> 12;
+
 			next_copper_x = m_copper->execute_next(
 				x,
 				m_last_scanline & 0xff,
-				bool(BIT(CUSTOM_REG(REG_DMACON), 14)) // BBUSY
+				bool(BIT(CUSTOM_REG(REG_DMACON), 14)), // BBUSY
+				planes
 			);
 			save_color0 = CUSTOM_REG(REG_COLOR00);
 			if (m_genlock_color != 0xffff)
 				CUSTOM_REG(REG_COLOR00) = m_genlock_color;
 
 			/* compute update-related register values */
-			planes = (CUSTOM_REG(REG_BPLCON0) & (BPLCON0_BPU0 | BPLCON0_BPU1 | BPLCON0_BPU2)) >> 12;
 			hires = CUSTOM_REG(REG_BPLCON0) & BPLCON0_HIRES;
 			ham = CUSTOM_REG(REG_BPLCON0) & BPLCON0_HOMOD;
 			dualpf = CUSTOM_REG(REG_BPLCON0) & BPLCON0_DBLPF;
@@ -597,10 +602,32 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 			ecolmask = (CUSTOM_REG(REG_CLXCON) >> 6) & 0x2a;
 		}
 
+		/* update sprite data fetching */
+		// ensure this happens once every two scanlines for the RAM manipulation, kickoff cares
+		// this is also unaffected by LACE
+		if ((raw_scanline & 1) == 0)
+		{
+			const int min_x = 0x18 << 1;
+			const int max_x = 0x34 << 1;
+			// TODO: refine
+			// Sprite DMA loads first two words at $14 + num * 4, other 2 words at $18 + num * 4
+			// NOTE: position $28 for sprite 4 has a typo on HRM diagram
+			// non-zero DMA fetches are required by:
+			// - beast gameplay, abreed (top left counter)
+			if (x >= min_x && x <= max_x && (x & 7) == 0)
+			{
+				int num = (x - min_x) >> 3;
+				//printf("%d %02x\n", num, x);
+				update_sprite_dma(raw_scanline >> 1, num);
+			}
+		}
+
 		/* clear the target pixels to the background color as a starting point */
-		if (dst != nullptr)
+		if (dst != nullptr && !out_of_beam)
+		{
 			dst[x*2+0] =
 			dst[x*2+1] = m_palette->pen(CUSTOM_REG(REG_COLOR00));
+		}
 
 		/* if we hit the first fetch pixel, reset the counters and latch the delays */
 		if (x == ddf_start_pixel)
@@ -632,10 +659,12 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 		/* need to run the sprite engine every pixel to ensure display */
 		sprpix = get_sprite_pixel(x);
 
+		bitplane_dma_enabled = (CUSTOM_REG(REG_DMACON) & (DMACON_BPLEN | DMACON_DMAEN)) == (DMACON_BPLEN | DMACON_DMAEN);
+
 		/* to render, we must have bitplane DMA enabled, at least 1 plane, and be within the */
 		/* vertical display window */
-		if ((CUSTOM_REG(REG_DMACON) & (DMACON_BPLEN | DMACON_DMAEN)) == (DMACON_BPLEN | DMACON_DMAEN) &&
-			planes > 0 && scanline >= m_diw.top() && scanline < m_diw.bottom())
+		// TODO: bitplane DMA enabled applies to fetch_bitplane_data only
+		if (bitplane_dma_enabled && planes > 0 && scanline >= m_diw.top() && scanline < m_diw.bottom())
 		{
 			int pfpix0 = 0, pfpix1 = 0, collide;
 
@@ -740,7 +769,7 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 				CUSTOM_REG(REG_CLXDAT) |= 0x001;
 
 			/* if we are within the display region, render */
-			if (dst != nullptr && x >= m_diw.left() && x < m_diw.right())
+			if (dst != nullptr && x >= m_diw.left() && x < m_diw.right() && !out_of_beam)
 			{
 				int pix, pri;
 
@@ -838,7 +867,8 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
 	}
 
 	// end of the line: time to add the modulos
-	if (scanline >= m_diw.top() && scanline < m_diw.bottom())
+	// NOTE: lweapon intro expects modulos to not be applied when bitplane DMA is disabled
+	if (scanline >= m_diw.top() && scanline < m_diw.bottom() && bitplane_dma_enabled)
 	{
 		// update odd planes
 		for (pl = 0; pl < planes; pl += 2)
@@ -865,17 +895,9 @@ void amiga_state::render_scanline(bitmap_rgb32 &bitmap, int scanline)
  *
  *************************************/
 
-uint32_t amiga_state::screen_update_amiga(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
+uint32_t amiga_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	// sometimes the core tells us to render a bunch of lines to keep up (resolution change, for example)
-	// this causes trouble for us since it can happen at any time
-	if (cliprect.top() != cliprect.bottom())
-		return 0;
-
-	// render each scanline in the visible region
-	for (int y = cliprect.top(); y <= cliprect.bottom(); y++)
-		render_scanline(bitmap, y);
-
+	copybitmap(bitmap, m_scanline_bitmap, 0, 0, 0, 0, cliprect);
 	return 0;
 }
 
@@ -920,7 +942,7 @@ void amiga_state::pal_video(machine_config &config)
 		amiga_state::SCREEN_WIDTH, amiga_state::HBLANK, amiga_state::SCREEN_WIDTH,
 		amiga_state::SCREEN_HEIGHT_PAL, amiga_state::VBLANK_PAL, amiga_state::SCREEN_HEIGHT_PAL
 	);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 }
 
 void amiga_state::ntsc_video(machine_config &config)
@@ -932,5 +954,5 @@ void amiga_state::ntsc_video(machine_config &config)
 		amiga_state::SCREEN_WIDTH, amiga_state::HBLANK, amiga_state::SCREEN_WIDTH,
 		amiga_state::SCREEN_HEIGHT_NTSC, amiga_state::VBLANK_NTSC, amiga_state::SCREEN_HEIGHT_NTSC
 	);
-	m_screen->set_screen_update(FUNC(amiga_state::screen_update_amiga));
+	m_screen->set_screen_update(FUNC(amiga_state::screen_update));
 }

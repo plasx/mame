@@ -14,6 +14,9 @@
 #include "machine/nvram.h"
 #include "machine/watchdog.h"
 
+
+namespace {
+
 class synthex_state : public driver_device
 {
 public:
@@ -30,7 +33,7 @@ public:
 	void synthex(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	u8 ram2_r(offs_t offset);
@@ -52,7 +55,7 @@ private:
 
 	virtual void driver_start() override;
 
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_device<acia6850_device> m_midiacia;
@@ -228,4 +231,7 @@ ROM_START(synthex)
 	// ROM4 decode is not used
 ROM_END
 
-SYST(1981, synthex, 0, 0, synthex, synthex, synthex_state, empty_init, "Elka", "Synthex", MACHINE_IS_SKELETON)
+} // anonymous namespace
+
+
+SYST(1981, synthex, 0, 0, synthex, synthex, synthex_state, empty_init, "Elka", "Synthex", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

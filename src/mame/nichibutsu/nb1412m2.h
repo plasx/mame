@@ -6,8 +6,8 @@ Nichibutsu 1412M2 device emulation
 
 ***************************************************************************/
 
-#ifndef MAME_MACHINE_NB1412M2_H
-#define MAME_MACHINE_NB1412M2_H
+#ifndef MAME_NICHIBUTSU_NB1412M2_H
+#define MAME_NICHIBUTSU_NB1412M2_H
 
 #pragma once
 
@@ -31,14 +31,14 @@ public:
 
 	auto dac_callback() { return m_dac_cb.bind(); }
 
-	void nb1412m2_map(address_map &map);
+	void nb1412m2_map(address_map &map) ATTR_COLD;
 
 protected:
 	// device-level overrides
 //  virtual void device_validity_check(validity_checker &valid) const override;
-//  virtual void device_add_mconfig(machine_config &config) override;
-	virtual void device_start() override;
-	virtual void device_reset() override;
+//  virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 	virtual space_config_vector memory_space_config() const override;
 
 	TIMER_CALLBACK_MEMBER(main_timer_tick);
@@ -87,4 +87,4 @@ DECLARE_DEVICE_TYPE(NB1412M2, nb1412m2_device)
 //**************************************************************************
 
 
-#endif // MAME_MACHINE_NB1412M2_H
+#endif // MAME_NICHIBUTSU_NB1412M2_H

@@ -13,6 +13,9 @@ ROMS came from PERQemu by Josh Dersch.
 
 #include "emu.h"
 
+
+namespace {
+
 class perq_state : public driver_device
 {
 public:
@@ -43,4 +46,7 @@ ROM_START( perq )
 	ROM_LOAD( "rsh00.rom",     0x0000, 0x0400, CRC(815d92bf) SHA1(b87bdea13de391e5615c474ba96af4b28b7f8f38) )
 ROM_END
 
-COMP( 1979, perq, 0, 0, perq, perq, perq_state, empty_init, "Three Rivers Company Corporation", "PERQ 1A", MACHINE_IS_SKELETON )
+} // anonymous namespace
+
+
+COMP( 1979, perq, 0, 0, perq, perq, perq_state, empty_init, "Three Rivers Company Corporation", "PERQ 1A", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

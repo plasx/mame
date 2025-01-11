@@ -39,6 +39,9 @@
 #include "softlist_dev.h"
 #include "speaker.h"
 
+
+namespace {
+
 class c2_color_state : public driver_device
 {
 public:
@@ -54,8 +57,8 @@ public:
 	void c2_color(machine_config &config);
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -63,8 +66,8 @@ private:
 
 	u8 cart_r(offs_t offset);
 
-	void prog_map(address_map &map);
-	void ext_map(address_map &map);
+	void prog_map(address_map &map) ATTR_COLD;
+	void ext_map(address_map &map) ATTR_COLD;
 
 	required_device<mcs51_cpu_device> m_maincpu;
 	required_device<generic_slot_device> m_cart;
@@ -97,12 +100,12 @@ void c2_color_state::machine_reset()
 
 DEVICE_IMAGE_LOAD_MEMBER(c2_color_state::cart_load)
 {
-	uint32_t size = m_cart->common_get_size("rom");
+	uint32_t const size = m_cart->common_get_size("rom");
 
 	m_cart->rom_alloc(size, GENERIC_ROM16_WIDTH, ENDIANNESS_LITTLE);
 	m_cart->common_load_rom(m_cart->get_rom_base(), size, "rom");
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 u8 c2_color_state::cart_r(offs_t offset)
@@ -180,5 +183,8 @@ ROM_START( c2color )
 	ROM_LOAD( "spi.u16", 0x000000, 0x400000, CRC(9101b02a) SHA1(8c31e7641f4667bd8d5d7cc991cd5976828a0628) )
 ROM_END
 
+} // anonymous namespace
+
+
 //    year, name,         parent,  compat, machine,      input,        class,              init,       company,  fullname,                             flags
-CONS( 201?, c2color,      0,       0,      c2_color,   c2_color, c2_color_state, empty_init, "Baiyi Animation", "C2 Color (China)", MACHINE_IS_SKELETON )
+CONS( 201?, c2color,      0,       0,      c2_color,   c2_color, c2_color_state, empty_init, "Baiyi Animation", "C2 Color (China)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

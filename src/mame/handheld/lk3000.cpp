@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Sean Riddle
-/******************************************************************************
+/*******************************************************************************
 
 Lexicon LK-3000, a pocket computer.
 It was also licensed to Nixdorf.
@@ -9,7 +9,7 @@ It was also licensed to Nixdorf.
 Hardware notes:
 - 3870 MCU (Motorola brand) @ 4MHz(2MHz internal)
 - optional external ROM or RAM
-- 4*Litronix DL 1414 (16*17segs total)
+- 4*Litronix DL1414 (16*17segs total)
 - 33-button keypad
 
 The CPU and memory is on the cartridge. In theory, any hardware configuration
@@ -23,7 +23,7 @@ cartridge types known:
 TODO:
 - external ram should be battery-backed
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
@@ -59,7 +59,7 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(reset_button) { m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? ASSERT_LINE : CLEAR_LINE); }
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
@@ -69,8 +69,16 @@ private:
 	required_ioport_array<8> m_inputs;
 	output_finder<16> m_digits;
 
-	void main_map(address_map &map);
-	void main_io(address_map &map);
+	u8 m_p0 = 0;
+	u8 m_p1 = 0;
+	u8 m_p4 = 0;
+	u8 m_p5 = 0;
+
+	bool m_has_ram = false;
+	u8 m_ram[0x400];
+
+	void main_map(address_map &map) ATTR_COLD;
+	void main_io(address_map &map) ATTR_COLD;
 
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(cart_load);
 	template <int N> void update_display(offs_t offset, u16 data);
@@ -83,14 +91,6 @@ private:
 	void p4_w(u8 data);
 	u8 p5_r();
 	void p5_w(u8 data);
-
-	u8 m_p0 = 0;
-	u8 m_p1 = 0;
-	u8 m_p4 = 0;
-	u8 m_p5 = 0;
-
-	bool m_has_ram = false;
-	u8 m_ram[0x400];
 };
 
 void lk3000_state::machine_start()
@@ -109,9 +109,9 @@ void lk3000_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 // misc
 
@@ -124,7 +124,7 @@ DEVICE_IMAGE_LOAD_MEMBER(lk3000_state::cart_load)
 	// extra ram (optional)
 	m_has_ram = image.get_feature("ram") != nullptr;
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 template <int N>
@@ -219,9 +219,9 @@ void lk3000_state::p5_w(u8 data)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void lk3000_state::main_map(address_map &map)
 {
@@ -238,9 +238,9 @@ void lk3000_state::main_io(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( lk3000 )
 	PORT_START("IN.0")
@@ -292,14 +292,14 @@ static INPUT_PORTS_START( lk3000 )
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F1) PORT_CHAR(UCHAR_MAMEKEY(F1)) PORT_NAME("f")
 
 	PORT_START("RESET")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL) PORT_CHANGED_MEMBER(DEVICE_SELF, lk3000_state, reset_button, 0) PORT_CHAR(127) PORT_NAME("clr")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(lk3000_state::reset_button), 0) PORT_CHAR(127) PORT_NAME("clr")
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void lk3000_state::lk3000(machine_config &config)
 {
@@ -334,9 +334,9 @@ void lk3000_state::lk3000(machine_config &config)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( lk3000 )
 	ROM_REGION( 0x0800, "maincpu", ROMREGION_ERASE00 )
@@ -347,9 +347,9 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME    PARENT  COMP  MACHINE  INPUT   STATE         INIT        COMPANY, FULLNAME, FLAGS
-COMP( 1979, lk3000, 0,      0,    lk3000,  lk3000, lk3000_state, empty_init, "Lexicon", "LK-3000", MACHINE_NO_SOUND_HW | MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT   CLASS         INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1979, lk3000, 0,      0,      lk3000,  lk3000, lk3000_state, empty_init, "Lexicon", "LK-3000", MACHINE_NO_SOUND_HW | MACHINE_SUPPORTS_SAVE )

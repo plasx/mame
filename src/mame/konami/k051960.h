@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Fabio Priuli,Acho A. Tang, R. Belmont
-#ifndef MAME_VIDEO_K051960_H
-#define MAME_VIDEO_K051960_H
+#ifndef MAME_KONAMI_K051960_H
+#define MAME_KONAMI_K051960_H
 
 #pragma once
 
@@ -66,8 +66,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	// internal state
@@ -96,4 +96,4 @@ private:
 
 DECLARE_DEVICE_TYPE(K051960, k051960_device)
 
-#endif // MAME_VIDEO_K051960_H
+#endif // MAME_KONAMI_K051960_H

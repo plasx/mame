@@ -137,7 +137,7 @@ However, this is effective ONLY if 7 other DSWB (I-O) are OFF !
 I add the 32 combinations for coinage.
 
 As I don't know what is the default value for timer speed, and I don't want to write
-the 64 combinaisons, I only put some values ... Feel free to add the other ones ...
+the 64 combinations, I only put some values ... Feel free to add the other ones ...
 
  DSW A    DSW B
 HGFEDCBA PONMLKJI    coin A  coin B
@@ -291,7 +291,7 @@ Notes & Todo:
 #include "emu.h"
 
 #include "bus/nes_ctrl/zapper_sensor.h"
-#include "cpu/m6502/n2a03.h"
+#include "cpu/m6502/rp2a03.h"
 #include "cpu/z80/z80.h"
 #include "machine/74259.h"
 #include "machine/rp5h01.h"
@@ -324,6 +324,7 @@ public:
 		, m_in(*this, "P%u", 1U)
 		, m_gunx(*this, "GUNX")
 		, m_guny(*this, "GUNY")
+		, m_trigger(*this, "TRIGGER")
 		, m_nt_page(*this, "nt_page%u", 0U)
 		, m_prg_banks(*this, "prg%u", 0U)
 		, m_prg_view(*this, "prg_view")
@@ -361,21 +362,20 @@ public:
 	void init_pckboard();
 	void init_pc_hrz();
 
-	DECLARE_READ_LINE_MEMBER(int_detect_r);
+	int int_detect_r();
 
 private:
-	DECLARE_WRITE_LINE_MEMBER(up8w_w);
+	void up8w_w(int state);
 	u8 ram_8w_r(offs_t offset);
 	void ram_8w_w(offs_t offset, u8 data);
-	void sprite_dma_w(address_space &space, u8 data);
 	void time_w(offs_t offset, u8 data);
-	DECLARE_WRITE_LINE_MEMBER(sdcs_w);
-	DECLARE_WRITE_LINE_MEMBER(cntrl_mask_w);
-	DECLARE_WRITE_LINE_MEMBER(disp_mask_w);
-	DECLARE_WRITE_LINE_MEMBER(sound_mask_w);
-	DECLARE_WRITE_LINE_MEMBER(nmi_enable_w);
-	DECLARE_WRITE_LINE_MEMBER(dog_di_w);
-	DECLARE_WRITE_LINE_MEMBER(ppu_reset_w);
+	void sdcs_w(int state);
+	void cntrl_mask_w(int state);
+	void disp_mask_w(int state);
+	void sound_mask_w(int state);
+	void nmi_enable_w(int state);
+	void dog_di_w(int state);
+	void ppu_reset_w(int state);
 	u8 pc10_detectclr_r();
 	void cart_sel_w(u8 data);
 	u8 pc10_prot_r();
@@ -397,26 +397,26 @@ private:
 
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);
 
-	void bios_io_map(address_map &map);
-	void bios_map(address_map &map);
-	void ppu_map(address_map &map);
-	void cart_map(address_map &map);
-	void cart_a_map(address_map &map);
-	void cart_b_map(address_map &map);
-	void cart_c_map(address_map &map);
-	void cart_d_map(address_map &map);
-	void cart_d2_map(address_map &map);
-	void cart_e_map(address_map &map);
-	void cart_f_map(address_map &map);
-	void cart_f2_map(address_map &map);
-	void cart_g_map(address_map &map);
-	void cart_h_map(address_map &map);
-	void cart_i_map(address_map &map);
-	void cart_k_map(address_map &map);
+	void bios_io_map(address_map &map) ATTR_COLD;
+	void bios_map(address_map &map) ATTR_COLD;
+	void ppu_map(address_map &map) ATTR_COLD;
+	void cart_map(address_map &map) ATTR_COLD;
+	void cart_a_map(address_map &map) ATTR_COLD;
+	void cart_b_map(address_map &map) ATTR_COLD;
+	void cart_c_map(address_map &map) ATTR_COLD;
+	void cart_d_map(address_map &map) ATTR_COLD;
+	void cart_d2_map(address_map &map) ATTR_COLD;
+	void cart_e_map(address_map &map) ATTR_COLD;
+	void cart_f_map(address_map &map) ATTR_COLD;
+	void cart_f2_map(address_map &map) ATTR_COLD;
+	void cart_g_map(address_map &map) ATTR_COLD;
+	void cart_h_map(address_map &map) ATTR_COLD;
+	void cart_i_map(address_map &map) ATTR_COLD;
+	void cart_k_map(address_map &map) ATTR_COLD;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
-	virtual void video_start() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void video_start() override ATTR_COLD;
 
 	struct chr_bank
 	{
@@ -425,12 +425,12 @@ private:
 	};
 
 	void playch10_palette(palette_device &palette) const;
-	DECLARE_WRITE_LINE_MEMBER(vblank_irq);
+	void vblank_irq(int state);
 
 	void pc10_set_videorom_bank(int first, int count, int bank, int size);
 	void pc10_set_videoram_bank(int first, int count, int bank, int size);
 	void gboard_scanline_cb(int scanline, bool vblank, bool blanked);
-	DECLARE_WRITE_LINE_MEMBER(int_detect_w);
+	void int_detect_w(int state);
 	void mapper9_latch(offs_t offset);
 	void pc10_set_mirroring(int mirroring);
 
@@ -439,7 +439,7 @@ private:
 	u32 screen_update_playch10_single(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	required_device<cpu_device> m_maincpu;
-	required_device<n2a03_device> m_cartcpu;
+	required_device<rp2a03_device> m_cartcpu;
 	required_device<ppu2c0x_device> m_ppu;
 	optional_device<rp5h01_device> m_rp5h01;
 
@@ -451,6 +451,7 @@ private:
 	required_ioport_array<2> m_in;
 	optional_ioport m_gunx;
 	optional_ioport m_guny;
+	optional_ioport m_trigger;
 
 	required_memory_bank_array<4> m_nt_page;
 	std::unique_ptr<u8[]> m_nt_ram;
@@ -535,7 +536,7 @@ void playch10_state::playch10_palette(palette_device &palette) const
 	}
 }
 
-WRITE_LINE_MEMBER(playch10_state::int_detect_w)
+void playch10_state::int_detect_w(int state)
 {
 	if (state)
 		m_pc10_int_detect = 1;
@@ -627,7 +628,7 @@ u32 playch10_state::screen_update_playch10_bottom(screen_device &screen, bitmap_
 //******************************************************************************
 
 
-WRITE_LINE_MEMBER(playch10_state::up8w_w)
+void playch10_state::up8w_w(int state)
 {
 	m_up_8w = state;
 }
@@ -644,11 +645,6 @@ void playch10_state::ram_8w_w(offs_t offset, u8 data)
 	if (!m_up_8w)
 		offset &= 0x3ff;
 	m_ram_8w[offset] = data;
-}
-
-void playch10_state::sprite_dma_w(address_space &space, u8 data)
-{
-	m_ppu->spriteram_dma(space, data);
 }
 
 // Only used in single monitor bios
@@ -726,12 +722,12 @@ void playch10_state::machine_start()
  *
  *************************************/
 
-READ_LINE_MEMBER(playch10_state::int_detect_r)
+int playch10_state::int_detect_r()
 {
 	return ~m_pc10_int_detect & 1;
 }
 
-WRITE_LINE_MEMBER(playch10_state::sdcs_w)
+void playch10_state::sdcs_w(int state)
 {
 	/*
 	    Hooked to CLR on LS194A - Sheet 2, bottom left.
@@ -742,32 +738,32 @@ WRITE_LINE_MEMBER(playch10_state::sdcs_w)
 	m_pc10_sdcs = !state;
 }
 
-WRITE_LINE_MEMBER(playch10_state::cntrl_mask_w)
+void playch10_state::cntrl_mask_w(int state)
 {
 	m_cntrl_mask = !state;
 }
 
-WRITE_LINE_MEMBER(playch10_state::disp_mask_w)
+void playch10_state::disp_mask_w(int state)
 {
 	m_pc10_dispmask = !state;
 }
 
-WRITE_LINE_MEMBER(playch10_state::sound_mask_w)
+void playch10_state::sound_mask_w(int state)
 {
 	machine().sound().system_mute(!state);
 }
 
-WRITE_LINE_MEMBER(playch10_state::nmi_enable_w)
+void playch10_state::nmi_enable_w(int state)
 {
 	m_pc10_nmi_enable = state;
 }
 
-WRITE_LINE_MEMBER(playch10_state::dog_di_w)
+void playch10_state::dog_di_w(int state)
 {
 	m_pc10_dog_di = state;
 }
 
-WRITE_LINE_MEMBER(playch10_state::ppu_reset_w)
+void playch10_state::ppu_reset_w(int state)
 {
 	if (state)
 		m_ppu->reset();
@@ -864,14 +860,12 @@ u8 playch10_state::pc10_in1_r()
 	// do the gun thing
 	if (m_pc10_gun_controller)
 	{
-		int trigger = m_in[0]->read();
-
 		if (!m_sensor->detect_light(m_gunx->read(), m_guny->read()))
 			ret |= 0x08;
 
 		// now, add the trigger if not masked
 		if (!m_cntrl_mask)
-			ret |= (trigger & 2) << 3;
+			ret |= m_trigger->read() << 4;
 	}
 
 	// some games expect bit 6 to be set because the last entry on the data bus shows up
@@ -1519,7 +1513,7 @@ void playch10_state::cart_map(address_map &map)
 {
 	map(0x0000, 0x07ff).mirror(0x1800).ram();
 	map(0x2000, 0x3fff).rw(m_ppu, FUNC(ppu2c0x_device::read), FUNC(ppu2c0x_device::write));
-	map(0x4014, 0x4014).w(FUNC(playch10_state::sprite_dma_w));
+	map(0x4014, 0x4014).w(m_ppu, FUNC(ppu2c0x_device::spriteram_dma));
 	map(0x4016, 0x4016).rw(FUNC(playch10_state::pc10_in0_r), FUNC(playch10_state::pc10_in0_w));
 	map(0x4017, 0x4017).r(FUNC(playch10_state::pc10_in1_r));  // IN1 - input port 2 / PSG second control register
 	// Games that don't bank PRG
@@ -1644,7 +1638,7 @@ static INPUT_PORTS_START( playch10 )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Channel Select") PORT_CODE(KEYCODE_0)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Enter") PORT_CODE(KEYCODE_MINUS)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Reset") PORT_CODE(KEYCODE_EQUALS)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(playch10_state, int_detect_r)   // INT Detect
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(playch10_state::int_detect_r))   // INT Detect
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SERVICE1 )
@@ -1840,18 +1834,18 @@ static INPUT_PORTS_START( playch10 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Free_Play ) )
 
 	PORT_START("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("P1 Button A")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P1 Button B")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("%p A") PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("%p B") PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 ) PORT_NAME("Game Select")
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START1 ) PORT_NAME("Start")
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    ) PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  ) PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 
 	PORT_START("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("P2 Button A") PORT_PLAYER(2)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P2 Button B") PORT_PLAYER(2)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("%p A") PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("%p B") PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )    // wired to 1p select button
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )    // wired to 1p start button
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    ) PORT_PLAYER(2)
@@ -1863,6 +1857,9 @@ INPUT_PORTS_END
 // Input Ports for gun games
 static INPUT_PORTS_START( playc10g )
 	PORT_INCLUDE(playch10)
+
+	PORT_START("TRIGGER")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Gun Trigger")
 
 	PORT_START("GUNX")  // IN2 - FAKE - Gun X pos
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_MINMAX(0, 255)
@@ -1887,7 +1884,7 @@ static GFXDECODE_START( gfx_playch10 )
 	GFXDECODE_ENTRY( "gfx1", 0, bios_charlayout,   0,  32 )
 GFXDECODE_END
 
-WRITE_LINE_MEMBER(playch10_state::vblank_irq)
+void playch10_state::vblank_irq(int state)
 {
 	if (state)
 	{
@@ -1906,7 +1903,7 @@ void playch10_state::playch10(machine_config &config)
 	m_maincpu->set_addrmap(AS_PROGRAM, &playch10_state::bios_map);
 	m_maincpu->set_addrmap(AS_IO, &playch10_state::bios_io_map);
 
-	N2A03(config, m_cartcpu, NTSC_APU_CLOCK);
+	RP2A03G(config, m_cartcpu, NTSC_APU_CLOCK); // really RP2A03E
 	m_cartcpu->set_addrmap(AS_PROGRAM, &playch10_state::cart_map);
 
 	ls259_device &outlatch1(LS259(config, "outlatch1")); // 7D
@@ -2042,9 +2039,9 @@ void playch10_state::playch10_k(machine_config &config)
 #define BIOS_CPU                                            \
 	ROM_SYSTEM_BIOS( 0, "dual",    "Dual Monitor Version" ) \
 	ROM_SYSTEM_BIOS( 1, "single",  "Single Monitor Version" ) \
-	ROM_SYSTEM_BIOS( 2, "alt",     "Alt Bios" ) /* this bios doesn't work properly, selecting service mode causes it to hang, is it good? maybe different hw? */ \
+	ROM_SYSTEM_BIOS( 2, "alt",     "Alternate BIOS" ) /* this bios doesn't work properly, selecting service mode causes it to hang, is it good? maybe different hw? */ \
 	ROM_SYSTEM_BIOS( 3, "singleb", "Single Monitor Version (Newer?)" ) /* Newer single screen? Four bytes different, reported bugfix in freeplay */ \
-	ROM_SYSTEM_BIOS( 4, "dualb",   "Dual Monitor Version (alternate)" ) /* this bios doesn't work properly, was found on a PCH1-03-CPU PCB */ \
+	ROM_SYSTEM_BIOS( 4, "dualb",   "Dual Monitor Version (alternate)" ) /* this BIOS doesn't work properly, was found on a PCH1-03-CPU PCB */ \
 	ROM_REGION( 0x10000, "maincpu", 0 )                     \
 	ROM_LOAD_BIOS( 0, "pch1-c__8t_e-2.8t", 0x00000, 0x4000, CRC(d52fa07a) SHA1(55cabf52ae10c050c2229081a80b9fe5454ab8c5) ) \
 	ROM_LOAD_BIOS( 1, "pck1-c.8t",         0x00000, 0x4000, CRC(503ee8b1) SHA1(3bd20bc71cac742d1b8c1430a6426d0a19db7ad0) ) \

@@ -312,7 +312,7 @@ static INPUT_PORTS_START( swtpc09 )
 	// keep up with higher rate operation. The MPU09 did have the option of
 	// 1MHz or 2MHz operation.
 	PORT_START("MAINCPU_CLOCK")
-	PORT_CONFNAME(0xffffff, 2000000, "CPU clock") PORT_CHANGED_MEMBER(DEVICE_SELF, swtpc09_state, maincpu_clock_change, 0)
+	PORT_CONFNAME(0xffffff, 2000000, "CPU clock") PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(swtpc09_state::maincpu_clock_change), 0)
 	PORT_CONFSETTING(1000000, "1.0 MHz")
 	PORT_CONFSETTING(2000000, "2.0 MHz")
 	PORT_CONFSETTING(4000000, "4.0 MHz")
@@ -325,7 +325,7 @@ static INPUT_PORTS_START( swtpc09 )
 	// 3.5" hd  -  2.0MHz
 	// 8" 360rpm  -  2.4MHz
 	PORT_START("FDC_CLOCK")
-	PORT_CONFNAME(0xffffff, 2000000, "DMAF2/3 FDC clock") PORT_CHANGED_MEMBER(DEVICE_SELF, swtpc09_state, fdc_clock_change, 0)
+	PORT_CONFNAME(0xffffff, 2000000, "DMAF2/3 FDC clock") PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(swtpc09_state::fdc_clock_change), 0)
 	PORT_CONFSETTING(1000000, "1.0 MHz")
 	PORT_CONFSETTING(1200000, "1.2 MHz")
 	PORT_CONFSETTING(2000000, "2.0 MHz")
@@ -335,7 +335,7 @@ static INPUT_PORTS_START( swtpc09 )
 	// most useful is the Low/High rate jumper that provide a four times
 	// rate increase.
 	PORT_START("BAUD_RATE_HIGH")
-	PORT_CONFNAME(0x1, 0, "High baud rate") PORT_CHANGED_MEMBER(DEVICE_SELF, swtpc09_state, baud_rate_high_change, 0)
+	PORT_CONFNAME(0x1, 0, "High baud rate") PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(swtpc09_state::baud_rate_high_change), 0)
 	PORT_CONFSETTING(0, "Low (x1)")
 	PORT_CONFSETTING(1, "High (x4)")
 
@@ -497,7 +497,7 @@ void swtpc09_state::swtpc09_base(machine_config &config)
 	io7.firq_cb().set("mainfirq", FUNC(input_merger_device::in_w<7>));
 
 	// IO8 at 0xe080 is used internally by the MPID board PIA.
-	PIA6821(config, m_pia, 0);
+	PIA6821(config, m_pia);
 	m_pia->readpa_handler().set(FUNC(swtpc09_state::pia0_a_r));
 	m_pia->ca1_w(0);
 	m_pia->irqa_handler().set(FUNC(swtpc09_state::pia0_irq_a));
@@ -665,7 +665,10 @@ void swtpc09_state::swtpc09o(machine_config &config)
 /* ROM definition */
 ROM_START( swtpc09 )
 	ROM_REGION( 0x100000, "bankdev", 0 )
-	ROM_LOAD ( "sbugh1-8.bin", 0xff800, 0x0800, CRC(10a045a7) SHA1(de547b77653951c7424a069520d52c5b0432e98d) )
+	ROM_SYSTEM_BIOS(0, "sbug19", "S-BUG 1.9")
+	ROMX_LOAD("sbugh1-9.bin", 0xff800, 0x0800, CRC(4a23c2d0) SHA1(da52ce76ac8b848d6c9580bd5ada4864eeb21e58), ROM_BIOS(0))
+	ROM_SYSTEM_BIOS(1, "sbug18", "S-BUG 1.8")
+	ROMX_LOAD("sbugh1-8.bin", 0xff800, 0x0800, CRC(10a045a7) SHA1(de547b77653951c7424a069520d52c5b0432e98d), ROM_BIOS(1))
 ROM_END
 
 ROM_START( swtpc09i )

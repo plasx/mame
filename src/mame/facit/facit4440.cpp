@@ -42,6 +42,9 @@
 #include "screen.h"
 #include "speaker.h"
 
+
+namespace {
+
 class facit4440_state : public driver_device
 {
 public:
@@ -64,7 +67,7 @@ public:
 	void facit4440(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	void earom_latch_w(u8 data);
@@ -73,12 +76,12 @@ private:
 	void control_6000_w(u8 data);
 	void control_a000_w(u8 data);
 
-	DECLARE_WRITE_LINE_MEMBER(vsync_w);
+	void vsync_w(int state);
 
 	MC6845_UPDATE_ROW(update_row);
 
-	void mem_map(address_map &map);
-	void io_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
+	void io_map(address_map &map) ATTR_COLD;
 
 	required_device<z80_device> m_maincpu;
 	required_device_array<er1400_device, 2> m_earom;
@@ -100,15 +103,6 @@ private:
 void facit4440_state::earom_latch_w(u8 data)
 {
 	// SN74LS174 latch + SN7406 inverter
-
-	// Prevent outputs from interfering with data reads
-	if (!BIT(data, 2))
-		data &= 0xfc;
-
-	// FIXME: clock must be written first here due to data/control setup time
-	m_earom[0]->clock_w(BIT(data, 5));
-	m_earom[1]->clock_w(BIT(data, 5));
-
 	m_earom[0]->data_w(BIT(data, 0));
 	m_earom[1]->data_w(BIT(data, 1));
 
@@ -117,6 +111,7 @@ void facit4440_state::earom_latch_w(u8 data)
 		earom->c2_w(BIT(data, 2));
 		earom->c1_w(BIT(data, 3));
 		earom->c3_w(BIT(data, 4));
+		earom->clock_w(BIT(data, 5));
 	}
 }
 
@@ -153,7 +148,7 @@ u8 facit4440_state::misc_status_r()
 	return status;
 }
 
-WRITE_LINE_MEMBER(facit4440_state::vsync_w)
+void facit4440_state::vsync_w(int state)
 {
 	if (state && BIT(m_control_latch[0], 5))
 		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
@@ -323,5 +318,8 @@ ROM_START(facit4440)
 	ROM_REGION(0x0800, "scanprom", 0)
 	ROM_LOAD("rom2.bin", 0x0000, 0x0800, CRC(9e1a190c) SHA1(fb08ee806f1056bcdfb5b08ea85995e1d3d01298))
 ROM_END
+
+} // anonymous namespace
+
 
 COMP(1984, facit4440, 0, 0, facit4440, facit4440, facit4440_state, empty_init, "Facit", "4440 Twist (30M-F1)", MACHINE_NOT_WORKING | MACHINE_IMPERFECT_GRAPHICS)

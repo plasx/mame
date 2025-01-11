@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:Patrick Mackinlay
 
-#ifndef MAME_MACHINE_DMAC_0448_H
-#define MAME_MACHINE_DMAC_0448_H
+#ifndef MAME_SONY_DMAC_0448_H
+#define MAME_SONY_DMAC_0448_H
 
 #pragma once
 
@@ -21,12 +21,12 @@ public:
 	template <unsigned IRQ> void irq(int state) { set_irq_line(IRQ, state); }
 	template <unsigned DRQ> void drq(int state) { set_drq_line(DRQ, state); }
 
-	void map(address_map &map);
+	void map(address_map &map) ATTR_COLD;
 
 protected:
 	// device_t overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	void set_irq_line(int number, int state);
 	void set_drq_line(int channel, int state);
@@ -96,4 +96,4 @@ protected:
 
 DECLARE_DEVICE_TYPE(DMAC_0448, dmac_0448_device)
 
-#endif // MAME_MACHINE_DMAC_0448_H
+#endif // MAME_SONY_DMAC_0448_H

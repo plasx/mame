@@ -11,14 +11,17 @@ Hardware notes:
 - Fujitsu MB8841 MCU
 - 8-digit 14-seg LEDs, 2-bit sound
 
-There's also a version of this game on a Panasonic MN1405 MCU.
+There's also a version of this game on a Matsushita MN1405 MCU (see hh_mn1400.cpp),
+even though it's a different MCU, the I/O is very similar.
 
 *******************************************************************************/
 
 #include "emu.h"
+
 #include "cpu/mb88xx/mb88xx.h"
 #include "sound/spkrdev.h"
 #include "video/pwm.h"
+
 #include "speaker.h"
 
 #include "scrablex.lh"
@@ -40,7 +43,7 @@ public:
 	void scrablex(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	required_device<mb8841_cpu_device> m_maincpu;
@@ -48,13 +51,13 @@ private:
 	required_device<speaker_sound_device> m_speaker;
 	required_ioport_array<5> m_inputs;
 
+	u8 m_inp_mux = 0;
+	u16 m_r = 0;
+
 	void write_o(u8 data);
 	void write_p(u8 data);
 	template<int N> u8 read_r();
 	template<int N> void write_r(u8 data);
-
-	u8 m_inp_mux = 0;
-	u16 m_r = 0;
 };
 
 void scrablex_state::machine_start()
@@ -182,6 +185,7 @@ void scrablex_state::scrablex(machine_config &config)
 {
 	// basic machine hardware
 	MB8841(config, m_maincpu, 500000); // approximation - RC osc. R=15K, C=100pF
+	m_maincpu->set_pla_bits(4);
 	m_maincpu->write_o().set(FUNC(scrablex_state::write_o));
 	m_maincpu->write_p().set(FUNC(scrablex_state::write_p));
 	m_maincpu->read_r<0>().set(FUNC(scrablex_state::read_r<0>));
@@ -225,5 +229,5 @@ ROM_END
     Drivers
 *******************************************************************************/
 
-//    YEAR  NAME      PARENT CMP MACHINE   INPUT     CLASS           INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1980, scrablex, 0,      0, scrablex, scrablex, scrablex_state, empty_init, "Selchow & Righter", "Scrabble Lexor - Computer Word Game", MACHINE_SUPPORTS_SAVE )
+//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1980, scrablex, 0,      0,      scrablex, scrablex, scrablex_state, empty_init, "Selchow & Righter", "Scrabble Lexor: Computer Word Game (MB8841 version)", MACHINE_SUPPORTS_SAVE )

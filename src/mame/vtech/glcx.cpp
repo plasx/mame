@@ -51,6 +51,9 @@ TMP47C241MG = TLCS-47 series 4-bit CPU with 2048x8 internal ROM
 #include "screen.h"
 #include "softlist_dev.h"
 
+
+namespace {
+
 class glcx_state : public driver_device
 {
 public:
@@ -64,7 +67,7 @@ public:
 private:
 	virtual uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<cr16b_device> m_maincpu;
 };
@@ -127,8 +130,10 @@ ROM_START( gtbmcx )
 	// Cartridge "EUROPA" contains no ROM
 ROM_END
 
+} // anonymous namespace
 
-COMP( 1999, gl6600cx, 0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "Genius Leader 6600 CX (Germany)", MACHINE_IS_SKELETON )
-COMP( 1999, gl8008cx, 0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "Genius Leader 8008 CX (Germany)", MACHINE_IS_SKELETON)
-COMP( 1999, bs9009cx, 0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "BrainStation 9009 CXL (Germany)", MACHINE_IS_SKELETON)
-COMP( 2000, gtbmcx,   0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "Genius Tabletop Black Magic CX (Germany)", MACHINE_IS_SKELETON)
+
+COMP( 1999, gl6600cx, 0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "Genius Leader 6600 CX (Germany)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+COMP( 1999, gl8008cx, 0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "Genius Leader 8008 CX (Germany)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP( 1999, bs9009cx, 0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "BrainStation 9009 CXL (Germany)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP( 2000, gtbmcx,   0, 0, glcx, glcx, glcx_state, empty_init, "VTech", "Genius Tabletop Black Magic CX (Germany)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

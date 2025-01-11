@@ -15,12 +15,12 @@
  * In its current state, this driver is unlikely to work out of the box with any other machines.
  *
  * Register definitions were derived from the NetBSD source code, copyright (c) 2000 Tsubai Masanari.
- * SCSI state machine code was derived from the MAME NCR5390 driver, copyright (c) Olivier Galibert
+ * SCSI state machine code was derived from the MAME NCR53C90 driver, copyright (c) Olivier Galibert
  *
  * References:
  * - https://github.com/NetBSD/src/blob/trunk/sys/arch/newsmips/apbus/spifireg.h
  * - https://github.com/NetBSD/src/blob/trunk/sys/arch/newsmips/apbus/spifi.c
- * - https://github.com/mamedev/mame/blob/master/src/devices/machine/ncr5390.cpp
+ * - https://github.com/mamedev/mame/blob/master/src/devices/machine/ncr53c90.cpp
  */
 
 #ifndef MAME_MACHINE_SPIFI3_H
@@ -36,7 +36,7 @@ class spifi3_device
 {
 public:
 	spifi3_device(machine_config const &mconfig, char const *tag, device_t *owner, u32 clock);
-	void map(address_map &map);
+	void map(address_map &map) ATTR_COLD;
 
 	auto irq_handler_cb() { return m_irq_handler.bind(); }
 	auto drq_handler_cb() { return m_drq_handler.bind(); }
@@ -45,7 +45,7 @@ public:
 	void dma_w(uint8_t val);
 
 protected:
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 	virtual void scsi_ctrl_changed() override;
 
 private:

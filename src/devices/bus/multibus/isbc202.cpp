@@ -61,6 +61,7 @@
 #include "emu.h"
 #include "isbc202.h"
 #include "formats/img_dsk.h"
+#include "formats/fs_isis.h"
 
 // Debugging
 #include "logmacro.h"
@@ -315,7 +316,7 @@ void isbc202_device::io_w(address_space &space, offs_t offset, uint8_t data)
 	}
 }
 
-WRITE_LINE_MEMBER(isbc202_device::co_w)
+void isbc202_device::co_w(int state)
 {
 	m_inputs[ IN_SEL_CO ] = state;
 	m_mcu->fi_w(state);
@@ -480,6 +481,7 @@ static void isbc202_floppies(device_slot_interface &device)
 static void isbc202_floppy_formats(format_registration &fr)
 {
 	fr.add(FLOPPY_IMG_FORMAT);
+	fr.add(fs::ISIS);
 };
 
 void isbc202_device::device_add_mconfig(machine_config &config)
@@ -743,7 +745,7 @@ void isbc202_device::set_output()
 			LOG_BUS("CPU out of wait state\n");
 			xack_w(0);
 			// Ensure the MCU executes a few instruction before the CPU
-			machine().scheduler().boost_interleave(attotime::from_usec(1) , attotime::from_usec(5));
+			machine().scheduler().add_quantum(attotime::from_usec(1) , attotime::from_usec(5));
 			m_inputs[ IN_SEL_START ] = false;
 		}
 		if (BIT(m_mask , 4)) {

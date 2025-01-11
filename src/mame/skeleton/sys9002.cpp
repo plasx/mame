@@ -30,6 +30,9 @@ to talk with RS-232.
 #include "machine/i8251.h"
 #include "bus/rs232/rs232.h"
 
+
+namespace {
+
 class sys9002_state : public driver_device
 {
 public:
@@ -46,8 +49,8 @@ public:
 private:
 	MC6845_UPDATE_ROW(crtc_update_row);
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 	u8 port11_r();
 
 	required_device<cpu_device> m_maincpu;
@@ -179,7 +182,10 @@ ROM_START( sys9002 )
 	ROM_LOAD("charrom.bin",  0x0000,  0x0800, BAD_DUMP CRC(b149737b) SHA1(a3cd4f5d0d3c71137cd1f0f650db83333a2e3597) )
 ROM_END
 
+} // anonymous namespace
+
+
 /* Driver */
 
 //    YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT    CLASS          INIT        COMPANY               FULLNAME                FLAGS
-COMP( 198?, sys9002, 0,      0,      sys9002, sys9002, sys9002_state, empty_init, "Mannesmann Kienzle", "System 9002 Terminal", MACHINE_IS_SKELETON | MACHINE_SUPPORTS_SAVE )
+COMP( 198?, sys9002, 0,      0,      sys9002, sys9002, sys9002_state, empty_init, "Mannesmann Kienzle", "System 9002 Terminal", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )

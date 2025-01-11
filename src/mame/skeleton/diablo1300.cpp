@@ -136,6 +136,9 @@ The serial interface card is z80 based and marked DIABLO-1300-V24
 #include "emu.h"
 #include "cpu/diablo/diablo1300.h"
 
+
+namespace {
+
 class diablo1300_state : public driver_device
 {
 public:
@@ -147,12 +150,12 @@ public:
 	void diablo1300(machine_config &config);
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	required_device<cpu_device> m_maincpu;
 
-	void diablo1300_map(address_map &map);
-	void diablo1300_data_map(address_map &map);
+	void diablo1300_map(address_map &map) ATTR_COLD;
+	void diablo1300_data_map(address_map &map) ATTR_COLD;
 };
 
 void diablo1300_state::diablo1300_map(address_map &map)
@@ -202,5 +205,8 @@ ROM_START( diablo )
 
 ROM_END
 
+} // anonymous namespace
+
+
 //   YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       CLASS             INIT        COMPANY               FULLNAME
-COMP(1976, diablo, 0,      0,      diablo1300, diablo1300, diablo1300_state, empty_init, "Diablo Systems Inc", "Diablo HyType II Series 1300 CPU", MACHINE_IS_SKELETON)
+COMP(1976, diablo, 0,      0,      diablo1300, diablo1300, diablo1300_state, empty_init, "Diablo Systems Inc", "Diablo HyType II Series 1300 CPU", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

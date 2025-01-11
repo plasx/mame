@@ -22,10 +22,12 @@
 
 #include "emu.h"
 #include "cpu/arm7/arm7.h"
-#include "cpu/arm7/arm7core.h"
 #include "machine/ram.h"
 #include "emupal.h"
 #include "screen.h"
+
+
+namespace {
 
 class newton_state : public driver_device
 {
@@ -45,7 +47,7 @@ public:
 	void mp2100(machine_config &config);
 
 protected:
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	uint32_t tick_count_r();
 
@@ -179,16 +181,19 @@ ROM_START( mp2100 )
 	ROMX_LOAD( "mp2100.rom", 0x000000, 0x800000, CRC(81d5efc6) SHA1(82a191652b2689ce0e254ee11c6f43c84b5185cc), ROM_REVERSE | ROM_GROUPDWORD )
 ROM_END
 
+} // anonymous namespace
+
+
 /* Driver */
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT   CLASS         INIT        COMPANY           FULLNAME     FLAGS
-CONS( 1992, newtnotp, 0,      0,      gen1,     newton, newton_state, empty_init, "Apple Computer", "Newton Notepad (prototype)", MACHINE_IS_SKELETON )
-CONS( 1993, newtonmp, 0,      0,      gen1,     newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad", MACHINE_IS_SKELETON )
-CONS( 1993, spi7000,  0,      0,      gen1,     newton, newton_state, empty_init, "Sharp", "ExpertPad PI-7000", MACHINE_IS_SKELETON )
-CONS( 1994, mp110,    0,      0,      gen1,     newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 110", MACHINE_IS_SKELETON )
-CONS( 1995, mp120,    0,      0,      mp120,    newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 120", MACHINE_IS_SKELETON )
-CONS( 1995, motmarco, 0,      0,      marco,    newton, newton_state, empty_init, "Motorola", "Marco", MACHINE_IS_SKELETON )
-CONS( 1996, mp130,    0,      0,      mp130,    newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 130", MACHINE_IS_SKELETON )
-CONS( 1997, emate,    0,      0,      emate,    newton, newton_state, empty_init, "Apple Computer", "eMate 300", MACHINE_IS_SKELETON )
-CONS( 1997, mp2000,   0,      0,      mp2000,   newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 2000", MACHINE_IS_SKELETON )
-CONS( 1997, mp2100,   0,      0,      mp2100,   newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 2100", MACHINE_IS_SKELETON )
+CONS( 1992, newtnotp, 0,      0,      gen1,     newton, newton_state, empty_init, "Apple Computer", "Newton Notepad (prototype)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1993, newtonmp, 0,      0,      gen1,     newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1993, spi7000,  0,      0,      gen1,     newton, newton_state, empty_init, "Sharp", "ExpertPad PI-7000", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1994, mp110,    0,      0,      gen1,     newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 110", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1995, mp120,    0,      0,      mp120,    newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 120", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1995, motmarco, 0,      0,      marco,    newton, newton_state, empty_init, "Motorola", "Marco", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1996, mp130,    0,      0,      mp130,    newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 130", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1997, emate,    0,      0,      emate,    newton, newton_state, empty_init, "Apple Computer", "eMate 300", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1997, mp2000,   0,      0,      mp2000,   newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 2000", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 1997, mp2100,   0,      0,      mp2100,   newton, newton_state, empty_init, "Apple Computer", "Newton MessagePad 2100", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

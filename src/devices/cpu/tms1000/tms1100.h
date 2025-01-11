@@ -34,7 +34,7 @@
      O3 14 |___________| 15 O2
 
             ____   ____
-    R11  1 |*   \_/    | 48 R10
+    R11  1 |*   \_/    | 40 R10
     R12  2 |           | 39 R9
     R13  3 |           | 38 R8
     R14  4 |           | 37 R7
@@ -69,8 +69,8 @@ protected:
 	tms1100_cpu_device(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, u32 clock, u8 o_pins, u8 r_pins, u8 pc_bits, u8 byte_bits, u8 x_bits, u8 stack_levels, int rom_width, address_map_constructor rom_map, int ram_width, address_map_constructor ram_map);
 
 	// overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	virtual std::unique_ptr<util::disasm_interface> create_disassembler() override;
 

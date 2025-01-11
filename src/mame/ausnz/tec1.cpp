@@ -81,6 +81,8 @@ JMON ToDo:
 #include "tec1.lh"
 
 
+namespace {
+
 class tec1_state : public driver_device
 {
 public:
@@ -100,20 +102,20 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(reset_button);
 
 private:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 	u8 kbd_r();
 	u8 latch_r();
 	void tec1_digit_w(u8 data);
 	void tecjmon_digit_w(u8 data);
 	void segment_w(u8 data);
-	DECLARE_WRITE_LINE_MEMBER(da_w);
+	void da_w(int state);
 	bool m_key_pressed = 0;
 	u8 m_seg = 0U;
 	u8 m_digit = 0U;
-	void tec1_io(address_map &map);
-	void tec1_map(address_map &map);
-	void tecjmon_io(address_map &map);
-	void tecjmon_map(address_map &map);
+	void tec1_io(address_map &map) ATTR_COLD;
+	void tec1_map(address_map &map) ATTR_COLD;
+	void tecjmon_io(address_map &map) ATTR_COLD;
+	void tecjmon_map(address_map &map) ATTR_COLD;
 	required_device<cpu_device> m_maincpu;
 	required_device<speaker_sound_device> m_speaker;
 	optional_device<cassette_image_device> m_cass;
@@ -204,7 +206,7 @@ u8 tec1_state::kbd_r()
 	return m_kb->read() | m_io_shift->read();
 }
 
-WRITE_LINE_MEMBER( tec1_state::da_w )
+void tec1_state::da_w(int state)
 {
 	m_key_pressed = state;
 	m_maincpu->set_input_line(INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE);
@@ -308,7 +310,7 @@ static INPUT_PORTS_START( tec1 )
 	PORT_BIT(0xc0, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_START("RESET")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RESET") PORT_CODE(KEYCODE_LALT) PORT_CHANGED_MEMBER(DEVICE_SELF, tec1_state, reset_button, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RESET") PORT_CODE(KEYCODE_LALT) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(tec1_state::reset_button), 0)
 INPUT_PORTS_END
 
 INPUT_CHANGED_MEMBER(tec1_state::reset_button)
@@ -404,6 +406,9 @@ ROM_START(tecjmon)
 	ROM_LOAD("jmon.rom",    0x0000, 0x0800, CRC(202c47a2) SHA1(701588ec5640d633d90d94b2ccd6f65422e19a70) )
 	ROM_LOAD("util.rom",    0x0800, 0x0800, CRC(7c19700d) SHA1(dc5b3ade66bb11c54430056966ed99cdd299d82b) )
 ROM_END
+
+} // anonymous namespace
+
 
 //    YEAR  NAME      PARENT  COMPAT  MACHINE  INPUT  CLASS       INIT        COMPANY                         FULLNAME            FLAGS
 COMP( 1984, tec1,     0,      0,      tec1,    tec1,  tec1_state, empty_init, "Talking Electronics magazine", "TEC-1",            MACHINE_SUPPORTS_SAVE )

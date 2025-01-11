@@ -269,14 +269,6 @@ void a2091_device::device_start()
 	m_dmac->set_rom(memregion("bootrom")->base());
 }
 
-//-------------------------------------------------
-//  device_reset - device-specific reset
-//-------------------------------------------------
-
-void dmac_hdc_device_base::device_reset()
-{
-}
-
 void dmac_hdc_device_base::resize_ram(int config)
 {
 	// allocate space for RAM
@@ -303,22 +295,12 @@ void dmac_hdc_device_base::resize_ram(int config)
 	m_dmac->set_ram(&m_ram[0]);
 }
 
-void a590_device::device_reset()
-{
-	dmac_hdc_device_base::device_reset();
-}
-
-void a2091_device::device_reset()
-{
-	dmac_hdc_device_base::device_reset();
-}
-
 
 //**************************************************************************
 //  IMPLEMENTATION
 //**************************************************************************
 
-WRITE_LINE_MEMBER( a590_device::cfgin_w )
+void a590_device::cfgin_w(int state)
 {
 	// make sure we configure ourselves first
 	m_int6 = m_jp4->read() & 0x01;
@@ -328,7 +310,7 @@ WRITE_LINE_MEMBER( a590_device::cfgin_w )
 	m_dmac->configin_w(state);
 }
 
-WRITE_LINE_MEMBER( a2091_device::cfgin_w )
+void a2091_device::cfgin_w(int state)
 {
 	// make sure we configure ourselves first
 	m_int6 = m_jp3->read() & 0x01;
@@ -358,7 +340,7 @@ void dmac_hdc_device_base::dmac_scsi_w(offs_t offset, uint8_t data)
 	}
 }
 
-WRITE_LINE_MEMBER( dmac_hdc_device_base::dmac_int_w )
+void dmac_hdc_device_base::dmac_int_w(int state)
 {
 	if (m_int6)
 		int6_w(state);
@@ -366,13 +348,13 @@ WRITE_LINE_MEMBER( dmac_hdc_device_base::dmac_int_w )
 		int2_w(state);
 }
 
-WRITE_LINE_MEMBER( dmac_hdc_device_base::scsi_irq_w )
+void dmac_hdc_device_base::scsi_irq_w(int state)
 {
 	// should be or'ed with xt-ide IRQ
 	m_dmac->intx_w(state);
 }
 
-WRITE_LINE_MEMBER( dmac_hdc_device_base::scsi_drq_w )
+void dmac_hdc_device_base::scsi_drq_w(int state)
 {
 	m_dmac->xdreq_w(state);
 }

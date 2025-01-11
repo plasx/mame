@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood, Angelo Salese
-#ifndef MAME_VIDEO_K054000_H
-#define MAME_VIDEO_K054000_H
+#ifndef MAME_KONAMI_K054000_H
+#define MAME_KONAMI_K054000_H
 
 #pragma once
 
@@ -12,12 +12,12 @@ public:
 	k054000_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 	~k054000_device() {}
 
-	void map(address_map &map);
+	void map(address_map &map) ATTR_COLD;
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	// internal state
@@ -39,4 +39,4 @@ private:
 
 DECLARE_DEVICE_TYPE(K054000, k054000_device)
 
-#endif // MAME_VIDEO_K054000_H
+#endif // MAME_KONAMI_K054000_H

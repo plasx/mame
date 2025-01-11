@@ -100,21 +100,24 @@
 
 #define POKEY_DEFAULT_GAIN (32767/11/4)
 
-#define VERBOSE         0
-#define VERBOSE_SOUND   0
-#define VERBOSE_TIMER   0
-#define VERBOSE_POLY    0
-#define VERBOSE_RAND    0
+#define VERBOSE_SOUND   (1U << 1)
+#define VERBOSE_TIMER   (1U << 2)
+#define VERBOSE_POLY    (1U << 3)
+#define VERBOSE_RAND    (1U << 4)
+#define VERBOSE_IRQ     (1U << 5)
+#define VERBOSE         (0)
 
-#define LOG(x) do { if (VERBOSE) logerror x; } while (0)
+#include "logmacro.h"
 
-#define LOG_SOUND(x) do { if (VERBOSE_SOUND) logerror x; } while (0)
+#define LOG_SOUND(...) LOGMASKED(VERBOSE_SOUND, __VA_ARGS__)
 
-#define LOG_TIMER(x) do { if (VERBOSE_TIMER) logerror x; } while (0)
+#define LOG_TIMER(...) LOGMASKED(VERBOSE_TIMER, __VA_ARGS__)
 
-#define LOG_POLY(x) do { if (VERBOSE_POLY) logerror x; } while (0)
+#define LOG_POLY(...) LOGMASKED(VERBOSE_POLY, __VA_ARGS__)
 
-#define LOG_RAND(x) do { if (VERBOSE_RAND) logerror x; } while (0)
+#define LOG_RAND(...) LOGMASKED(VERBOSE_RAND, __VA_ARGS__)
+
+#define LOG_IRQ(...) LOGMASKED(VERBOSE_IRQ, __VA_ARGS__)
 
 #define CHAN1   0
 #define CHAN2   1
@@ -196,12 +199,12 @@ pokey_device::pokey_device(const machine_config &mconfig, const char *tag, devic
 	device_state_interface(mconfig, *this),
 	m_icount(0),
 	m_stream(nullptr),
-	m_pot_r_cb(*this),
-	m_allpot_r_cb(*this),
-	m_serin_r_cb(*this),
+	m_pot_r_cb(*this, 0),
+	m_allpot_r_cb(*this, 0),
+	m_serin_r_cb(*this, 0),
 	m_serout_w_cb(*this),
+	m_irq_w_cb(*this),
 	m_keyboard_r(*this),
-	m_irq_f(*this),
 	m_output_type(LEGACY_LINEAR),
 	m_serout_ready_timer(nullptr),
 	m_serout_complete_timer(nullptr),
@@ -224,9 +227,8 @@ void pokey_device::device_start()
 	m_channel[CHAN2].m_INTMask = IRQ_TIMR2;
 	m_channel[CHAN4].m_INTMask = IRQ_TIMR4;
 
-	// bind callbacks
+	// bind delegates
 	m_keyboard_r.resolve();
-	m_irq_f.resolve();
 
 	/* calculate the A/D times
 	 * In normal, slow mode (SKCTL bit SK_PADDLE is clear) the conversion
@@ -255,11 +257,10 @@ void pokey_device::device_start()
 	m_KBCODE = 0x09; // Atari 800 'no key'
 	m_SKCTL = 0;
 
-	// TODO, remove this line:
-	m_SKCTL = SK_RESET;
-	// It's left in place to accomodate demos that don't explicitly reset pokey.
+	// TODO: several a7800 demos don't explicitly reset pokey at startup
 	// See https://atariage.com/forums/topic/337317-a7800-52-release/ and
 	// https://atariage.com/forums/topic/268458-a7800-the-atari-7800-emulator/?do=findComment&comment=5079170)
+	// m_SKCTL = SK_RESET;
 
 	m_SKSTAT = 0;
 	/* This bit should probably get set later. Acid5200 pokey_setoc test tests this. */
@@ -282,11 +283,6 @@ void pokey_device::device_start()
 	/* reset more internal state */
 	std::fill(std::begin(m_clock_cnt), std::end(m_clock_cnt), 0);
 	std::fill(std::begin(m_POTx), std::end(m_POTx), 0);
-
-	m_pot_r_cb.resolve_all();
-	m_allpot_r_cb.resolve();
-	m_serin_r_cb.resolve();
-	m_serout_w_cb.resolve_safe();
 
 	m_stream = stream_alloc(0, 1, clock());
 
@@ -354,6 +350,10 @@ void pokey_device::device_start()
 void pokey_device::device_reset()
 {
 	m_stream->update();
+	// a1200xl reads POT4 twice at startup for reading self-test mode jumpers.
+	// we need to update POT counters here otherwise it will boot to self-test
+	// the first time around no matter the setting.
+	pokey_potgo();
 }
 
 
@@ -393,18 +393,18 @@ TIMER_CALLBACK_MEMBER(pokey_device::serout_ready_irq)
 	if (m_IRQEN & IRQ_SEROR)
 	{
 		m_IRQST |= IRQ_SEROR;
-		if (!m_irq_f.isnull())
-			m_irq_f(IRQ_SEROR);
+		LOG_IRQ("POKEY SEROR IRQ raised\n");
+		m_irq_w_cb(ASSERT_LINE);
 	}
 }
 
 TIMER_CALLBACK_MEMBER(pokey_device::serout_complete_irq)
 {
+	m_IRQST |= IRQ_SEROC;
 	if (m_IRQEN & IRQ_SEROC)
 	{
-		m_IRQST |= IRQ_SEROC;
-		if (!m_irq_f.isnull())
-			m_irq_f(IRQ_SEROC);
+		LOG_IRQ("POKEY SEROC IRQ raised\n");
+		m_irq_w_cb(ASSERT_LINE);
 	}
 }
 
@@ -413,8 +413,8 @@ TIMER_CALLBACK_MEMBER(pokey_device::serin_ready_irq)
 	if (m_IRQEN & IRQ_SERIN)
 	{
 		m_IRQST |= IRQ_SERIN;
-		if (!m_irq_f.isnull())
-			m_irq_f(IRQ_SERIN);
+		LOG_IRQ("POKEY SERIN IRQ raised\n");
+		m_irq_w_cb(ASSERT_LINE);
 	}
 }
 
@@ -433,7 +433,12 @@ TIMER_CALLBACK_MEMBER(pokey_device::sync_pot)
 
 TIMER_CALLBACK_MEMBER(pokey_device::sync_set_irqst)
 {
-	m_IRQST |=  (param & 0xff);
+	if (m_IRQEN & param)
+	{
+		LOG_IRQ("POKEY TIMR%d IRQ raised\n", param);
+		m_IRQST |=  (param & 0xff);
+		m_irq_w_cb(ASSERT_LINE);
+	}
 }
 
 void pokey_device::execute_run()
@@ -468,9 +473,9 @@ void pokey_device::step_keyboard()
 				/* check if the break IRQ is enabled */
 				if (m_IRQEN & IRQ_BREAK)
 				{
+					LOG_IRQ("POKEY BREAK IRQ raised\n");
 					m_IRQST |= IRQ_BREAK;
-					if (!m_irq_f.isnull())
-						m_irq_f(IRQ_BREAK);
+					m_irq_w_cb(ASSERT_LINE);
 				}
 			}
 			break;
@@ -496,20 +501,20 @@ void pokey_device::step_keyboard()
 			}
 			break;
 		case 1: /* waiting for key confirmation */
-			if ((m_kbd_latch & 0x3f) == m_kbd_cnt)
+			if (!(m_SKCTL & SK_DEBOUNCE) || (m_kbd_latch & 0x3f) == m_kbd_cnt)
 			{
 				if (ret & 1)
 				{
-					m_KBCODE = m_kbd_latch;
+					m_KBCODE = (m_SKCTL & SK_DEBOUNCE) ? m_kbd_latch : (m_kbd_latch & 0xc0) | m_kbd_cnt;
 					m_SKSTAT |= SK_KEYBD;
 					if (m_IRQEN & IRQ_KEYBD)
 					{
 						/* last interrupt not acknowledged ? */
 						if (m_IRQST & IRQ_KEYBD)
 							m_SKSTAT |= SK_KBERR;
+						LOG_IRQ("POKEY KEYBD IRQ raised\n");
 						m_IRQST |= IRQ_KEYBD;
-						if (!m_irq_f.isnull())
-							m_irq_f(IRQ_KEYBD);
+						m_irq_w_cb(ASSERT_LINE);
 					}
 					m_kbd_state++;
 				}
@@ -518,16 +523,14 @@ void pokey_device::step_keyboard()
 			}
 			break;
 		case 2: /* waiting for release */
-			if ((m_kbd_latch & 0x3f) == m_kbd_cnt)
+			if (!(m_SKCTL & SK_DEBOUNCE) || (m_kbd_latch & 0x3f) == m_kbd_cnt)
 			{
 				if ((ret & 1)==0)
 					m_kbd_state++;
-				else
-					m_SKSTAT |= SK_KEYBD;
 			}
 			break;
 		case 3:
-			if ((m_kbd_latch & 0x3f) == m_kbd_cnt)
+			if (!(m_SKCTL & SK_DEBOUNCE) || (m_kbd_latch & 0x3f) == m_kbd_cnt)
 			{
 				if (ret & 1)
 					m_kbd_state = 2;
@@ -668,9 +671,6 @@ void pokey_device::step_one_clock()
 		else
 			m_channel[CHAN2].m_filter_sample = 1;
 
-		if ((m_IRQST & IRQ_TIMR4) && !m_irq_f.isnull())
-			m_irq_f(IRQ_TIMR4);
-
 		m_old_raw_inval = true;
 	}
 
@@ -690,10 +690,6 @@ void pokey_device::step_one_clock()
 		// TODO: If two-tone is enabled *and* serial output == 1 then reset the channel 2 timer.
 
 		process_channel(CHAN1);
-
-		// check if some of the requested timer interrupts are enabled
-		if ((m_IRQST & IRQ_TIMR1) && !m_irq_f.isnull())
-			m_irq_f(IRQ_TIMR1);
 	}
 
 	if (m_channel[CHAN2].check_borrow())
@@ -704,10 +700,6 @@ void pokey_device::step_one_clock()
 		m_channel[CHAN2].reset_channel();
 
 		process_channel(CHAN2);
-
-		// check if some of the requested timer interrupts are enabled
-		if ((m_IRQST & IRQ_TIMR2) && !m_irq_f.isnull())
-			m_irq_f(IRQ_TIMR2);
 	}
 
 	if (m_old_raw_inval)
@@ -817,12 +809,12 @@ uint8_t pokey_device::read(offs_t offset)
 		{
 			/* we have a value measured */
 			data = m_POTx[pot];
-			LOG(("POKEY '%s' read POT%d (final value)  $%02x\n", tag(), pot, data));
+			LOG("%s: POKEY read POT%d (final value)  $%02x\n", machine().describe_context(), pot, data);
 		}
 		else
 		{
 			data = m_pot_counter;
-			LOG(("POKEY '%s' read POT%d (interpolated) $%02x\n", tag(), pot, data));
+			LOG("%s: POKEY read POT%d (interpolated) $%02x\n", machine().describe_context(), pot, data);
 		}
 		break;
 
@@ -834,17 +826,17 @@ uint8_t pokey_device::read(offs_t offset)
 		if ((m_SKCTL & SK_RESET) == 0)
 		{
 			data = m_ALLPOT;
-			LOG(("POKEY '%s' ALLPOT internal $%02x (reset)\n", tag(), data));
+			LOG("%s: POKEY ALLPOT internal $%02x (reset)\n", machine().describe_context(), data);
 		}
-		else if (!m_allpot_r_cb.isnull())
+		else if (!m_allpot_r_cb.isunset())
 		{
 			m_ALLPOT = data = m_allpot_r_cb(offset);
-			LOG(("%s: POKEY '%s' ALLPOT callback $%02x\n", machine().describe_context(), tag(), data));
+			LOG("%s: POKEY ALLPOT callback $%02x\n", machine().describe_context(), data);
 		}
 		else
 		{
 			data = m_ALLPOT ^ 0xff;
-			LOG(("POKEY '%s' ALLPOT internal $%02x\n", tag(), data));
+			LOG("%s: POKEY ALLPOT internal $%02x\n", machine().describe_context(), data);
 		}
 		break;
 
@@ -856,37 +848,37 @@ uint8_t pokey_device::read(offs_t offset)
 		if (m_AUDCTL & POLY9)
 		{
 			data = m_poly9[m_p9] & 0xff;
-			LOG_RAND(("POKEY '%s' rand9[$%05x]: $%02x\n", tag(), m_p9, data));
+			LOG_RAND("%s: POKEY rand9[$%05x]: $%02x\n", machine().describe_context(), m_p9, data);
 		}
 		else
 		{
 			data = (m_poly17[m_p17] >> 8) & 0xff;
-			LOG_RAND(("POKEY '%s' rand17[$%05x]: $%02x\n", tag(), m_p17, data));
+			LOG_RAND("%s: POKEY rand17[$%05x]: $%02x\n", machine().describe_context(), m_p17, data);
 		}
 		break;
 
 	case SERIN_C:
-		if (!m_serin_r_cb.isnull())
+		if (!m_serin_r_cb.isunset())
 			m_SERIN = m_serin_r_cb(offset);
 		data = m_SERIN;
-		LOG(("POKEY '%s' SERIN  $%02x\n", tag(), data));
+		LOG("%s: POKEY SERIN  $%02x\n", machine().describe_context(), data);
 		break;
 
 	case IRQST_C:
 		/* IRQST is an active low input port; we keep it active high */
 		/* internally to ease the (un-)masking of bits */
 		data = m_IRQST ^ 0xff;
-		LOG(("POKEY '%s' IRQST  $%02x\n", tag(), data));
+		LOG("%s: POKEY IRQST  $%02x\n", machine().describe_context(), data);
 		break;
 
 	case SKSTAT_C:
 		/* SKSTAT is also an active low input port */
 		data = m_SKSTAT ^ 0xff;
-		LOG(("POKEY '%s' SKSTAT $%02x\n", tag(), data));
+		LOG("%s: POKEY SKSTAT $%02x\n", machine().describe_context(), data);
 		break;
 
 	default:
-		LOG(("POKEY '%s' register $%02x\n", tag(), offset));
+		LOG("%s: POKEY register $%02x\n", machine().describe_context(), offset);
 		data = 0xff;
 		break;
 	}
@@ -909,45 +901,45 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 	switch (offset & 15)
 	{
 	case AUDF1_C:
-		LOG_SOUND(("POKEY '%s' AUDF1  $%02x\n", tag(), data));
+		LOG_SOUND("%s: AUDF1 = $%02x\n", machine().describe_context(), data);
 		m_channel[CHAN1].m_AUDF = data;
 		break;
 
 	case AUDC1_C:
-		LOG_SOUND(("POKEY '%s' AUDC1  $%02x (%s)\n", tag(), data, audc2str(data)));
+		LOG_SOUND("%s: POKEY AUDC1  $%02x (%s)\n", machine().describe_context(), data, audc2str(data));
 		m_channel[CHAN1].m_AUDC = data;
 		m_old_raw_inval = true;
 		break;
 
 	case AUDF2_C:
-		LOG_SOUND(("POKEY '%s' AUDF2  $%02x\n", tag(), data));
+		LOG_SOUND("%s: POKEY AUDF2  $%02x\n", machine().describe_context(), data);
 		m_channel[CHAN2].m_AUDF = data;
 		break;
 
 	case AUDC2_C:
-		LOG_SOUND(("POKEY '%s' AUDC2  $%02x (%s)\n", tag(), data, audc2str(data)));
+		LOG_SOUND("%s: POKEY AUDC2  $%02x (%s)\n", machine().describe_context(), data, audc2str(data));
 		m_channel[CHAN2].m_AUDC = data;
 		m_old_raw_inval = true;
 		break;
 
 	case AUDF3_C:
-		LOG_SOUND(("POKEY '%s' AUDF3  $%02x\n", tag(), data));
+		LOG_SOUND("%s: POKEY AUDF3  $%02x\n", machine().describe_context(), data);
 		m_channel[CHAN3].m_AUDF = data;
 		break;
 
 	case AUDC3_C:
-		LOG_SOUND(("POKEY '%s' AUDC3  $%02x (%s)\n", tag(), data, audc2str(data)));
+		LOG_SOUND("%s: POKEY AUDC3  $%02x (%s)\n", machine().describe_context(), data, audc2str(data));
 		m_channel[CHAN3].m_AUDC = data;
 		m_old_raw_inval = true;
 		break;
 
 	case AUDF4_C:
-		LOG_SOUND(("POKEY '%s' AUDF4  $%02x\n", tag(), data));
+		LOG_SOUND("%s: POKEY AUDF4  $%02x\n", machine().describe_context(), data);
 		m_channel[CHAN4].m_AUDF = data;
 		break;
 
 	case AUDC4_C:
-		LOG_SOUND(("POKEY '%s' AUDC4  $%02x (%s)\n", tag(), data, audc2str(data)));
+		LOG_SOUND("%s: POKEY AUDC4  $%02x (%s)\n", machine().describe_context(), data, audc2str(data));
 		m_channel[CHAN4].m_AUDC = data;
 		m_old_raw_inval = true;
 		break;
@@ -955,13 +947,13 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 	case AUDCTL_C:
 		if (data == m_AUDCTL)
 			return;
-		LOG_SOUND(("POKEY '%s' AUDCTL $%02x (%s)\n", tag(), data, audctl2str(data)));
+		LOG_SOUND("%s: POKEY AUDCTL $%02x (%s)\n", machine().describe_context(), data, audctl2str(data));
 		m_AUDCTL = data;
 		m_old_raw_inval = true;
 		break;
 
 	case STIMER_C:
-		LOG_TIMER(("POKEY '%s' STIMER $%02x\n", tag(), data));
+		LOG_TIMER("%s: POKEY STIMER $%02x\n", machine().describe_context(), data);
 
 		/* From the pokey documentation:
 		 * reset all counters to zero (side effect)
@@ -979,17 +971,23 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 
 	case SKREST_C:
 		/* reset SKSTAT */
-		LOG(("POKEY '%s' SKREST $%02x\n", tag(), data));
+		LOG("%s: POKEY SKREST $%02x\n", machine().describe_context(), data);
 		m_SKSTAT &= ~(SK_FRAME|SK_OVERRUN|SK_KBERR);
 		break;
 
 	case POTGO_C:
-		LOG(("POKEY '%s' POTGO  $%02x\n", tag(), data));
-		pokey_potgo();
+		LOG("%s: POKEY POTGO  $%02x\n", machine().describe_context(), data);
+		if (m_SKCTL & SK_RESET)
+			pokey_potgo();
 		break;
 
 	case SEROUT_C:
-		LOG(("POKEY '%s' SEROUT $%02x\n", tag(), data));
+		LOG("%s: POKEY SEROUT $%02x\n", machine().describe_context(), data);
+		// TODO: convert to real serial comms, fix timings
+		// SEROC (1) serial out in progress (0) serial out complete
+		// in progress status is necessary for a800 telelnk2 to boot
+		m_IRQST &= ~IRQ_SEROC;
+
 		m_serout_w_cb(offset, data);
 		m_SKSTAT |= SK_SEROUT;
 		/*
@@ -1003,7 +1001,7 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 		break;
 
 	case IRQEN_C:
-		LOG(("POKEY '%s' IRQEN  $%02x\n", tag(), data));
+		LOG("%s: POKEY IRQEN  $%02x\n", machine().describe_context(), data);
 
 		/* acknowledge one or more IRQST bits ? */
 		if (m_IRQST & ~data)
@@ -1016,15 +1014,20 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 		/* if SEROC irq is enabled trigger an irq (acid5200 pokey_seroc test) */
 		if (m_IRQEN & m_IRQST & IRQ_SEROC)
 		{
-			if (!m_irq_f.isnull())
-				m_irq_f(IRQ_SEROC);
+			LOG_IRQ("POKEY SEROC IRQ enabled\n");
+			m_irq_w_cb(ASSERT_LINE);
+		}
+		else if (!(m_IRQEN & m_IRQST))
+		{
+			LOG_IRQ("POKEY IRQs all cleared\n");
+			m_irq_w_cb(CLEAR_LINE);
 		}
 		break;
 
 	case SKCTL_C:
 		if (data == m_SKCTL)
 			return;
-		LOG(("POKEY '%s' SKCTL  $%02x\n", tag(), data));
+		LOG("%s: POKEY SKCTL  $%02x\n", machine().describe_context(), data);
 		m_SKCTL = data;
 		if (!(data & SK_RESET))
 		{
@@ -1046,6 +1049,12 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 			m_clock_cnt[2] = 0;
 			/* FIXME: Serial port reset ! */
 		}
+		if (!(data & SK_KEYSCAN))
+		{
+			m_SKSTAT &= ~SK_KEYBD;
+			m_kbd_cnt = 0;
+			m_kbd_state = 0;
+		}
 		m_old_raw_inval = true;
 		break;
 	}
@@ -1060,7 +1069,7 @@ void pokey_device::write_internal(offs_t offset, uint8_t data)
 
 }
 
-WRITE_LINE_MEMBER( pokey_device::sid_w )
+void pokey_device::sid_w(int state)
 {
 	if (state)
 	{
@@ -1100,10 +1109,7 @@ inline void pokey_device::process_channel(int ch)
 
 void pokey_device::pokey_potgo()
 {
-	if (!(m_SKCTL & SK_RESET))
-		return;
-
-	LOG(("POKEY #%p pokey_potgo\n", (void *) this));
+	LOG("pokey_potgo\n");
 
 	m_ALLPOT = 0x00;
 	m_pot_counter = 0;
@@ -1111,11 +1117,11 @@ void pokey_device::pokey_potgo()
 	for (int pot = 0; pot < 8; pot++)
 	{
 		m_POTx[pot] = 228;
-		if (!m_pot_r_cb[pot].isnull())
+		if (!m_pot_r_cb[pot].isunset())
 		{
 			int r = m_pot_r_cb[pot](pot);
 
-			LOG(("POKEY %s pot_r(%d) returned $%02x\n", tag(), pot, r));
+			LOG("POKEY pot_r(%d) returned $%02x\n", pot, r);
 			if (r >= 228)
 				r = 228;
 
@@ -1156,12 +1162,12 @@ void pokey_device::vol_init()
 		}
 		r_chan[j] = 1.0 / rTot;
 	}
-	if (VERBOSE)
+	if (VERBOSE & LOG_GENERAL)
 		for (int j=0; j<16; j++)
 		{
 			rTot = 1.0 / r_chan[j] + 3.0 / r_chan[0];
 			rTot = 1.0 / rTot;
-			LOG(("%s: %3d - %4.3f\n", tag(), j, rTot / (rTot+pull_up)*4.75));
+			LOG("%3d - %4.3f\n", j, rTot / (rTot+pull_up)*4.75);
 		}
 	for (int j=0; j<0x10000; j++)
 	{
@@ -1178,7 +1184,7 @@ void pokey_device::vol_init()
 
 void pokey_device::poly_init_4_5(uint32_t *poly, int size)
 {
-	LOG_POLY(("poly %d\n", size));
+	LOG_POLY("poly %d\n", size);
 
 	int mask = (1 << size) - 1;
 	uint32_t lfsr = 0;
@@ -1194,7 +1200,7 @@ void pokey_device::poly_init_4_5(uint32_t *poly, int size)
 
 void pokey_device::poly_init_9_17(uint32_t *poly, int size)
 {
-	LOG_RAND(("rand %d\n", size));
+	LOG_RAND("rand %d\n", size);
 
 	const uint32_t mask = util::make_bitmask<uint32_t>(size);
 	uint32_t lfsr = mask;
@@ -1210,7 +1216,7 @@ void pokey_device::poly_init_9_17(uint32_t *poly, int size)
 			lfsr = (lfsr & 0xff7f) | (in8 << 7);
 			lfsr = (in << 16) | lfsr;
 			*poly = lfsr;
-			LOG_RAND(("%05x: %02x\n", i, *poly));
+			LOG_RAND("%05x: %02x\n", i, *poly);
 			poly++;
 		}
 	}
@@ -1223,7 +1229,7 @@ void pokey_device::poly_init_9_17(uint32_t *poly, int size)
 			lfsr = lfsr >> 1;
 			lfsr = (in << 8) | lfsr;
 			*poly = lfsr;
-			LOG_RAND(("%05x: %02x\n", i, *poly));
+			LOG_RAND("%05x: %02x\n", i, *poly);
 			poly++;
 		}
 	}

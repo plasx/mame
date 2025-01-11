@@ -75,6 +75,9 @@
 #include "softlist_dev.h"
 #include "speaker.h"
 
+
+namespace {
+
 class pi_storyreader_state : public driver_device
 {
 public:
@@ -88,8 +91,8 @@ public:
 	void pi_storyreader_v2(machine_config &config);
 
 private:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(cart_load);
 
@@ -115,12 +118,12 @@ void pi_storyreader_state::machine_reset()
 
 DEVICE_IMAGE_LOAD_MEMBER(pi_storyreader_state::cart_load)
 {
-	uint32_t size = m_cart->common_get_size("rom");
+	uint32_t const size = m_cart->common_get_size("rom");
 
 	m_cart->rom_alloc(size, GENERIC_ROM16_WIDTH, ENDIANNESS_LITTLE);
 	m_cart->common_load_rom(m_cart->get_rom_base(), size, "rom");
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 static INPUT_PORTS_START( pi_storyreader )
@@ -164,8 +167,11 @@ ROM_START( pi_stry2 )
 	ROM_LOAD( "internal.mcu.rom", 0x0000, 0x1000, NO_DUMP ) // unknown type / size
 ROM_END
 
+} // anonymous namespace
+
+
 //    year, name,        parent,    compat, machine,            input,            class,                  init,       company,    fullname,                         flags
 
 // These are said to not be compatible with each other
-CONS( 200?, pi_stry,     0,         0,      pi_storyreader,      pi_storyreader, pi_storyreader_state, empty_init, "Publications International Ltd", "Story Reader",                MACHINE_IS_SKELETON )
-CONS( 200?, pi_stry2,    0,         0,      pi_storyreader_v2,   pi_storyreader, pi_storyreader_state, empty_init, "Publications International Ltd", "Story Reader 2.0",            MACHINE_IS_SKELETON )
+CONS( 200?, pi_stry,     0,         0,      pi_storyreader,      pi_storyreader, pi_storyreader_state, empty_init, "Publications International Ltd", "Story Reader",                MACHINE_NO_SOUND | MACHINE_NOT_WORKING )
+CONS( 200?, pi_stry2,    0,         0,      pi_storyreader_v2,   pi_storyreader, pi_storyreader_state, empty_init, "Publications International Ltd", "Story Reader 2.0",            MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

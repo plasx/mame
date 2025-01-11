@@ -6,8 +6,8 @@
  *
  ****************************************************************************/
 
-#ifndef MAME_VIDEO_STIC_H
-#define MAME_VIDEO_STIC_H
+#ifndef MAME_MATTEL_STIC_H
+#define MAME_MATTEL_STIC_H
 
 // the Intellivision emulation scales to match the output format at the last
 // step. The Intellivision keyboard component appears to be 320x96, but can
@@ -77,9 +77,9 @@ public:
 	void set_y_scale(int val) { m_y_scale = val; }
 
 	// device-level overrides
-	virtual void device_start() override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	void screenrefresh();
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -182,4 +182,4 @@ private:
 DECLARE_DEVICE_TYPE(STIC, stic_device)
 
 
-#endif // MAME_VIDEO_STIC_H
+#endif // MAME_MATTEL_STIC_H

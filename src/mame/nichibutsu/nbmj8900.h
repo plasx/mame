@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Takahiro Nogi
-#ifndef MAME_INCLUDES_NBMJ8900_H
-#define MAME_INCLUDES_NBMJ8900_H
+#ifndef MAME_NICHIBUTSU_NBMJ8900_H
+#define MAME_NICHIBUTSU_NBMJ8900_H
 
 #pragma once
 
@@ -72,7 +72,7 @@ private:
 	void vramsel_w(uint8_t data);
 	void romsel_w(uint8_t data);
 
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void vramflip(int vram);
@@ -81,11 +81,11 @@ private:
 	void gfxdraw();
 	void postload();
 
-	void ohpaipee_io_map(address_map &map);
-	void ohpaipee_map(address_map &map);
-	void togenkyo_map(address_map &map);
+	void ohpaipee_io_map(address_map &map) ATTR_COLD;
+	void ohpaipee_map(address_map &map) ATTR_COLD;
+	void togenkyo_map(address_map &map) ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(clear_busy_flag);
 };
 
-#endif // MAME_INCLUDES_NBMJ8900_H
+#endif // MAME_NICHIBUTSU_NBMJ8900_H

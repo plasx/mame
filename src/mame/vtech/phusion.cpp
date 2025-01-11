@@ -40,7 +40,7 @@ public:
 private:
 	uint32_t screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
-	void phusion_map(address_map &map);
+	void phusion_map(address_map &map) ATTR_COLD;
 
 	required_device<cr16b_device> m_maincpu;
 };
@@ -67,7 +67,7 @@ void phusion_state::phusion(machine_config &config)
 	CR16B(config, m_maincpu, 10000000); // FIXME: determine exact type and clock
 	m_maincpu->set_addrmap(AS_PROGRAM, &phusion_state::phusion_map);
 
-	AMD_29F800B_16BIT(config, "flash", 0);
+	TC58FVT800(config, "flash");
 
 	screen_device &screen(SCREEN(config, "screen", SCREEN_TYPE_RASTER));
 	screen.set_refresh_hz(60);
@@ -88,4 +88,4 @@ ROM_END
 
 } // anonymous namespace
 
-SYST( 2000, phusion, 0, 0, phusion, phusion, phusion_state, empty_init, "VTech", "Phusion", MACHINE_IS_SKELETON )
+SYST( 2000, phusion, 0, 0, phusion, phusion, phusion_state, empty_init, "VTech", "Phusion", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

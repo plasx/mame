@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:Martin Buchholz
 // thanks-to:James Wallace, Martin Buchholz, Juergen Oppermann, Volker Hann, Jan-Ole Christian
-#ifndef MAME_INCLUDES_POLYPLAY_H
-#define MAME_INCLUDES_POLYPLAY_H
+#ifndef MAME_DDR_POLYPLAY_H
+#define MAME_DDR_POLYPLAY_H
 
 #include "cpu/z80/z80.h"
 #include "machine/z80ctc.h"
@@ -44,15 +44,15 @@ public:
 
 protected:
 	virtual void machine_start() override { m_lamps.resolve(); }
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	INTERRUPT_GEN_MEMBER(nmi_handler);
 
 	/* devices */
-	DECLARE_WRITE_LINE_MEMBER(ctc_zc0_w);
-	DECLARE_WRITE_LINE_MEMBER(ctc_zc1_w);
-	DECLARE_WRITE_LINE_MEMBER(ctc_zc2_w);
+	void ctc_zc0_w(int state);
+	void ctc_zc1_w(int state);
+	void ctc_zc2_w(int state);
 
 	uint8_t pio_porta_r();
 	void pio_porta_w(uint8_t data);
@@ -62,10 +62,10 @@ private:
 	void polyplay_characterram_w(offs_t offset, uint8_t data);
 	void polyplay_palette(palette_device &palette) const;
 	uint32_t screen_update_polyplay(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void polyplay_io_zre(address_map &map);
-	void polyplay_io_zrepp(address_map &map);
-	void polyplay_mem_zre(address_map &map);
-	void polyplay_mem_zrepp(address_map &map);
+	void polyplay_io_zre(address_map &map) ATTR_COLD;
+	void polyplay_io_zrepp(address_map &map) ATTR_COLD;
+	void polyplay_mem_zre(address_map &map) ATTR_COLD;
+	void polyplay_mem_zrepp(address_map &map) ATTR_COLD;
 
 	required_shared_ptr<uint8_t> m_videoram;
 	required_shared_ptr<uint8_t> m_characterram;
@@ -86,4 +86,4 @@ private:
 	output_finder<4> m_lamps;
 };
 
-#endif // MAME_INCLUDES_POLYPLAY_H
+#endif // MAME_DDR_POLYPLAY_H

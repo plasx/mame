@@ -25,6 +25,8 @@
 #include "svmu.lh"
 
 
+namespace {
+
 #define     PIXEL_SIZE          7
 #define     PIXEL_DISTANCE      1
 
@@ -47,8 +49,8 @@ public:
 	void svmu(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	LC8670_LCD_UPDATE(svmu_lcd_update);
@@ -61,8 +63,8 @@ private:
 	uint8_t p7_r();
 	DECLARE_QUICKLOAD_LOAD_MEMBER(quickload_cb);
 
-	void svmu_io_mem(address_map &map);
-	void svmu_mem(address_map &map);
+	void svmu_io_mem(address_map &map) ATTR_COLD;
+	void svmu_mem(address_map &map) ATTR_COLD;
 
 	required_device<lc8670_cpu_device> m_maincpu;
 	required_device<intelfsh8_device> m_flash;
@@ -325,7 +327,7 @@ QUICKLOAD_LOAD_MEMBER(svmu_state::quickload_cb)
 		vmufat_write_word(flash, 253, 0x1a, 0x0001);        // offset of header (in blocks) from file start
 	}
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 
@@ -408,6 +410,8 @@ ROM_START( svmu )
 	ROM_SYSTEM_BIOS(7, "dev1004", "VMS Japanese Development BIOS (1.004 1998/09/30)") // automatically boot the first game found in the flash
 	ROMX_LOAD( "jp1004-19980930-315-6208-01-dev.bin", 0x0000, 0x10000, CRC(395e25f2) SHA1(37dea034322b5b80b35b2de784298d32c71ba7a3), ROM_BIOS(7)) // from Sega Katana SDK (original file: qbios.sbf, CRC: eed5524c, xor key: 0x43)
 ROM_END
+
+} // anonymous namespace
 
 
 /* Driver */

@@ -5,8 +5,8 @@
  * includes/vector06.h
  *
  ****************************************************************************/
-#ifndef MAME_INCLUDES_VECTOR06_H
-#define MAME_INCLUDES_VECTOR06_H
+#ifndef MAME_USSR_VECTOR06_H
+#define MAME_USSR_VECTOR06_H
 
 #pragma once
 
@@ -75,15 +75,15 @@ private:
 	void disc_w(uint8_t data);
 	void status_callback(uint8_t data);
 	void ramdisk_w(uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER(speaker_w);
-	void machine_start() override;
-	void machine_reset() override;
+	void speaker_w(int state);
+	void machine_start() override ATTR_COLD;
+	void machine_reset() override ATTR_COLD;
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	IRQ_CALLBACK_MEMBER(irq_callback);
 	void update_mem();
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<i8080_cpu_device> m_maincpu;
 	required_region_ptr<u8> m_rom;
@@ -117,4 +117,4 @@ private:
 	bool m_romen = false;
 };
 
-#endif // MAME_INCLUDES_VECTOR06_H
+#endif // MAME_USSR_VECTOR06_H

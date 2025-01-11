@@ -17,6 +17,9 @@
 #include "cpu/mcs48/mcs48.h"
 //#include "video/saa5350.h"
 
+
+namespace {
+
 class bitel_state : public driver_device
 {
 public:
@@ -30,9 +33,9 @@ public:
 	void feap90(machine_config &config);
 
 private:
-	void prog_map(address_map &map);
-	void ext_map(address_map &map);
-	void sub_prog_map(address_map &map);
+	void prog_map(address_map &map) ATTR_COLD;
+	void ext_map(address_map &map) ATTR_COLD;
+	void sub_prog_map(address_map &map) ATTR_COLD;
 
 	required_device<mcs51_cpu_device> m_maincpu;
 };
@@ -94,5 +97,8 @@ ROM_START(feap90) // i8031, 80C42C121 (+SAA5351) // 4+2k ram onboard; 24kb in ba
 	ROM_LOAD("8838p8-80c42c121-a85.d16", 0x000, 0x800, NO_DUMP)
 ROM_END
 
-COMP(1986, t3210,  0, 0, t3210,  bitel, bitel_state, empty_init, "Siemens", "Bitel T3210", MACHINE_IS_SKELETON)
-COMP(1989, feap90, 0, 0, feap90, bitel, bitel_state, empty_init, "Siemens", "Multitel Fe Ap 90-1.1", MACHINE_IS_SKELETON)
+} // anonymous namespace
+
+
+COMP(1986, t3210,  0, 0, t3210,  bitel, bitel_state, empty_init, "Siemens", "Bitel T3210", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP(1989, feap90, 0, 0, feap90, bitel, bitel_state, empty_init, "Siemens", "Multitel Fe Ap 90-1.1", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

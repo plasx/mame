@@ -1,10 +1,11 @@
 // license:BSD-3-Clause
 // copyright-holders:Sandro Ronco, hap
-/******************************************************************************
+/*******************************************************************************
 
 Mephisto Risc 1MB/II (stylized "risc")
 
 The chess engine in Mephisto Risc is also compatible with Tasc's The ChessMachine,
+it is more or less equivalent to Gideon 3.0 (Risc 1MB) and Gideon 3.1 (Risc II),
 see ROM defs for details. "Main" CPU is slow, but all the chess calculations are
 done with the ARM.
 
@@ -15,16 +16,17 @@ Hardware notes:
 - Mephisto modular display module
 - Mephisto modular chessboard
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
-#include "cpu/m6502/m65sc02.h"
-#include "machine/74259.h"
-#include "machine/nvram.h"
 #include "mmboard.h"
-#include "machine/chessmachine.h"
 #include "mmdisplay2.h"
+
+#include "cpu/m6502/g65sc02.h"
+#include "machine/74259.h"
+#include "machine/chessmachine.h"
+#include "machine/nvram.h"
 
 // internal artwork
 #include "mephisto_risc.lh"
@@ -35,18 +37,18 @@ namespace {
 class risc_state : public driver_device
 {
 public:
-	risc_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_chessm(*this, "chessm")
-		, m_rombank(*this, "rombank")
-		, m_keys(*this, "KEY")
+	risc_state(const machine_config &mconfig, device_type type, const char *tag) :
+		driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_chessm(*this, "chessm"),
+		m_rombank(*this, "rombank"),
+		m_keys(*this, "KEY")
 	{ }
 
 	void mrisc(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	required_device<cpu_device> m_maincpu;
@@ -54,7 +56,7 @@ private:
 	required_memory_bank m_rombank;
 	required_ioport m_keys;
 
-	void mrisc_mem(address_map &map);
+	void mrisc_mem(address_map &map) ATTR_COLD;
 
 	u8 keys_r(offs_t offset);
 	u8 chessm_r();
@@ -68,9 +70,9 @@ void risc_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 u8 risc_state::keys_r(offs_t offset)
 {
@@ -95,9 +97,9 @@ void risc_state::chessm_w(u8 data)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void risc_state::mrisc_mem(address_map &map)
 {
@@ -118,41 +120,38 @@ void risc_state::mrisc_mem(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( mrisc )
 	PORT_START("KEY")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("TRN / Pawn")      PORT_CODE(KEYCODE_T)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("INFO / Knight")   PORT_CODE(KEYCODE_I)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("MEM / Bishop")    PORT_CODE(KEYCODE_M)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("POS / Rook")      PORT_CODE(KEYCODE_O)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("POS / Rook")      PORT_CODE(KEYCODE_P)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("LEV / Queen")     PORT_CODE(KEYCODE_L)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("FCT / King")      PORT_CODE(KEYCODE_F)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("ENT / New Game")  PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_F1) // combine for NEW GAME
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("ENT / New Game")  PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_ENTER_PAD) PORT_CODE(KEYCODE_F1) // combine for NEW GAME
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD)    PORT_NAME("CL / New Game")   PORT_CODE(KEYCODE_BACKSPACE) PORT_CODE(KEYCODE_DEL) PORT_CODE(KEYCODE_F1) // "
-
-	PORT_START("CLICKABLE") // helper for clickable artwork
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER)
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void risc_state::mrisc(machine_config &config)
 {
-	M65SC02(config, m_maincpu, 10_MHz_XTAL / 4);
+	// basic machine hardware
+	G65SC02(config, m_maincpu, 10_MHz_XTAL / 4);
 	m_maincpu->set_addrmap(AS_PROGRAM, &risc_state::mrisc_mem);
 
 	const attotime irq_period = attotime::from_hz(10_MHz_XTAL / 0x4000);
 	m_maincpu->set_periodic_int(FUNC(risc_state::irq0_line_hold), irq_period);
 
 	CHESSMACHINE(config, m_chessm, 14'000'000); // Mephisto manual says 14MHz (no XTAL)
-	config.set_perfect_quantum(m_maincpu);
 
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 
@@ -172,9 +171,9 @@ void risc_state::mrisc(machine_config &config)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( mrisc )
 	ROM_REGION( 0x20000, "maincpu", 0 )
@@ -194,10 +193,10 @@ ROM_END
 
 
 
-/***************************************************************************
+/*******************************************************************************
     Drivers
-***************************************************************************/
+*******************************************************************************/
 
-/*    YEAR  NAME     PARENT   COMPAT  MACHINE   INPUT  CLASS       INIT        COMPANY                    FULLNAME             FLAGS */
-CONS( 1992, mrisc,   0,       0,      mrisc,    mrisc, risc_state, empty_init, "Hegener + Glaser / Tasc", "Mephisto Risc 1MB", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1994, mrisc2,  mrisc,   0,      mrisc,    mrisc, risc_state, empty_init, "Hegener + Glaser / Tasc", "Mephisto Risc II",  MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME     PARENT   COMPAT  MACHINE   INPUT  CLASS       INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1992, mrisc,   0,       0,      mrisc,    mrisc, risc_state, empty_init, "Hegener + Glaser / Tasc", "Mephisto Risc 1MB", MACHINE_SUPPORTS_SAVE )
+SYST( 1994, mrisc2,  mrisc,   0,      mrisc,    mrisc, risc_state, empty_init, "Hegener + Glaser / Tasc", "Mephisto Risc II",  MACHINE_SUPPORTS_SAVE )

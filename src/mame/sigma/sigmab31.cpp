@@ -99,6 +99,8 @@ chip at location ic50   28 pin dip  stamped     Hitachi logo? 1A1 R
 #include "speaker.h"
 
 
+namespace {
+
 class sigmab31_state : public driver_device
 {
 public:
@@ -110,11 +112,11 @@ public:
 	void sigmab31(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
-	void prg_map(address_map &map);
+	void prg_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device>     m_maincpu;
 };
@@ -195,5 +197,7 @@ ROM_START( cptlucky )
 	ROM_LOAD( "m-slot_03-00_l89-1625.57", 0x00000, 0x8000, CRC(268c8a7c) SHA1(90903428d6c0af3ebdcb462e80a7c28dc4ee7af2) )
 ROM_END
 
+} // anonymous namespace
 
-GAME( 1988, cptlucky, 0, sigmab31, cptlucky, sigmab31_state, empty_init, ROT0, "Sigma", "Captain Lucky", MACHINE_IS_SKELETON_MECHANICAL ) // 1988 copyright in main CPU ROM
+
+GAME( 1988, cptlucky, 0, sigmab31, cptlucky, sigmab31_state, empty_init, ROT0, "Sigma", "Captain Lucky", MACHINE_NO_SOUND | MACHINE_NOT_WORKING | MACHINE_MECHANICAL | MACHINE_REQUIRES_ARTWORK ) // 1988 copyright in main CPU ROM

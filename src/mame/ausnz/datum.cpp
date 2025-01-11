@@ -59,6 +59,8 @@ Z1000G
 #include "datum.lh"
 
 
+namespace {
+
 class datum_state : public driver_device
 {
 public:
@@ -80,11 +82,11 @@ private:
 	uint8_t pa_r();
 	void pa_w(uint8_t data);
 	void pb_w(uint8_t data);
-	void datum_mem(address_map &map);
+	void datum_mem(address_map &map) ATTR_COLD;
 	uint8_t m_digit = 0U;
 	uint8_t m_seg = 0U;
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 	required_device<pia6821_device> m_pia1;
 	required_device<pia6821_device> m_pia2;
 	required_device<acia6850_device> m_acia;
@@ -140,8 +142,8 @@ static INPUT_PORTS_START( datum )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("SPECIAL")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Reset") PORT_CODE(KEYCODE_F3) PORT_CHANGED_MEMBER(DEVICE_SELF, datum_state, trigger_reset, 0)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Escape") PORT_CODE(KEYCODE_ESC)  PORT_CHAR('Z') PORT_CHANGED_MEMBER(DEVICE_SELF, datum_state, trigger_nmi, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Reset") PORT_CODE(KEYCODE_F3) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(datum_state::trigger_reset), 0)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Escape") PORT_CODE(KEYCODE_ESC)  PORT_CHAR('Z') PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(datum_state::trigger_nmi), 0)
 INPUT_PORTS_END
 
 INPUT_CHANGED_MEMBER( datum_state::trigger_reset )
@@ -203,14 +205,14 @@ void datum_state::datum(machine_config &config)
 	m_display->set_segmask(0x3f0, 0x7f);
 
 	/* Devices */
-	PIA6821(config, m_pia1, 0); // keyboard & display
+	PIA6821(config, m_pia1); // keyboard & display
 	m_pia1->readpa_handler().set(FUNC(datum_state::pa_r));
 	m_pia1->writepa_handler().set(FUNC(datum_state::pa_w));
 	m_pia1->writepb_handler().set(FUNC(datum_state::pb_w));
 	m_pia1->irqa_handler().set_inputline("maincpu", M6802_IRQ_LINE);
 	m_pia1->irqb_handler().set_inputline("maincpu", M6802_IRQ_LINE);
 
-	PIA6821(config, m_pia2, 0); // expansion
+	PIA6821(config, m_pia2); // expansion
 	m_pia2->irqa_handler().set_inputline("maincpu", M6802_IRQ_LINE);
 	m_pia2->irqb_handler().set_inputline("maincpu", M6802_IRQ_LINE);
 
@@ -228,6 +230,9 @@ ROM_START( datum )
 	ROM_REGION( 0x800, "roms", 0 )
 	ROM_LOAD( "datum.bin", 0x0000, 0x0800, BAD_DUMP CRC(6fb11628) SHA1(8a77a846b62eee0d12848da76e16b4c66ef445d8) )
 ROM_END
+
+} // anonymous namespace
+
 
 //    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  CLASS        INIT        COMPANY      FULLNAME  FLAGS
 COMP( 1982, datum, 0,      0,      datum,   datum, datum_state, empty_init, "Gammatron", "Datum",  MACHINE_NO_SOUND_HW | MACHINE_SUPPORTS_SAVE )

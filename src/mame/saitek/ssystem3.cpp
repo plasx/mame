@@ -1,23 +1,27 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Berger
-/******************************************************************************
+/*******************************************************************************
 
-SciSys / Novag Chess Champion: Super System III (aka MK III), distributed by
-both SciSys and Novag. Which company was responsible for which part of the
-manufacturing chain is unknown. The software is by SciSys (no mention of Novag
-in the ROM, it has "COPYRIGHT SCISYS LTD 1979").
+SciSys / Novag Chess Champion: Super System III (aka MK III)
+
+It was distributed by both SciSys and Novag. Which company was responsible for
+which part of the production chain is unknown. The copyright was assigned to SciSys
+(no mention of Novag in the ROM, it has "COPYRIGHT SCISYS LTD 1979").
 
 This is their 1st original product. MK II was licensed from Peter Jennings, and
-MK I was, to put it bluntly, a bootleg. The chess engine is by Mike Johnson,
-with support from David Levy.
+MK I was, to put it bluntly, a bootleg. The chess engine is by Mike Johnson, with
+support from David Levy, Philidor Software.
 
-Hardware notes (Master Unit):
+Hardware notes:
+
+Master Unit:
+- PCB label: 201041 (Rev.A to Rev.E)
 - Synertek 6502A @ 2MHz (4MHz XTAL)
 - Synertek 6522 VIA
 - 8KB ROM (2*Synertek 2332)
 - 1KB RAM (2*HM472114P-3)
-- MD4332BE + a bunch of TTL for the LCD
+- MD4332BE or HLCD0438 + a bunch of TTL for the LCD
 - 13 buttons, 4 switches, no leds or sensorboard
 - connectors for: PSU, Power Pack, Chess Unit, Printer Unit
 
@@ -33,6 +37,7 @@ Printer Unit:
 
 PSU ("permanent storage unit"?) is just a 256x4 battery-backed RAM (TC5501P)
 module, not sure why it was so expensive (~180DM).
+
 A chess clock accessory was also announced but unreleased.
 
 SciSys Super System IV (AKA MK IV) is on similar hardware. It was supposed to
@@ -42,18 +47,14 @@ reversi program called "The Moor". The chesscomputer was discontinued soon after
 release, and none of the accessories or other games came out.
 
 TODO:
-- 6522 ACR register is initialized with 0xe3. Meaning: PA and PB inputs are set
-  to latch mode, but the program then never clocks the latch, it functions as if
-  it meant to write 0xe0. Maybe 6522 CA1 pin emulation is wrong? Documentation
-  says it's edge-triggered, but here it's tied to VCC. I added a trivial hack to
-  work around this, see rom defs.
 - 2nd 7474 /2 clock divider on each 4000-7fff access, this also applies to 6522 clock
   (doesn't affect chess calculation speed, only I/O access, eg. beeper pitch).
   Should be doable to add, but 6522 device doesn't support live clock changes.
 - LCD TC pin? connects to the display, source is a 50hz timer(from power supply),
   probably to keep refreshing the LCD when inactive, there is no need to emulate it
 - dump/add printer unit
-- dump/add ssystem3 1980 program revision, were the BTANB fixed?
+- dump/add other ssystem3 program revisions, were the BTANB fixed in the 1980 version?
+  known undumped: C19081 + C19082 (instead of C19081E), C45000 + C45012
 - ssystem4 softwarelist if a prototype cartridge is ever dumped
 
 BTANB (ssystem3):
@@ -65,7 +66,7 @@ BTANB (ssystem3):
 - chess unit screen briefly flickers at power-on and when the subcpu receives an
   NMI in the middle of updating the LCD, it is mentioned in the manual
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
@@ -83,8 +84,8 @@ BTANB (ssystem3):
 #include "speaker.h"
 
 // internal artwork
-#include "saitek_ssystem3.lh" // clickable
-#include "saitek_ssystem4.lh" // clickable
+#include "saitek_ssystem3.lh"
+#include "saitek_ssystem4.lh"
 
 
 namespace {
@@ -116,7 +117,7 @@ public:
 	void init_ssystem3() { m_xor_kludge = true; }
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
@@ -127,15 +128,24 @@ private:
 	required_device<md4332b_device> m_lcd1;
 	optional_device_array<hlcd0438_device, 2> m_lcd2;
 	optional_device_array<pwm_display_device, 2> m_display;
-	required_device<dac_bit_interface> m_dac;
+	required_device<dac_1bit_device> m_dac;
 	optional_shared_ptr<u8> m_nvram;
 	optional_ioport_array<4+3> m_inputs;
 	output_finder<8, 48> m_out_lcd2;
 
+	u8 m_inp_mux = 0;
+	u8 m_control = 0;
+	u8 m_shift = 0;
+	u32 m_lcd1_data = 0;
+	u64 m_lcd2_data = 0;
+	u8 m_lcd2_select = 0;
+
+	bool m_xor_kludge = false;
+
 	// address maps
-	void ssystem3_map(address_map &map);
-	void ssystem4_map(address_map &map);
-	void chessunit_map(address_map &map);
+	void ssystem3_map(address_map &map) ATTR_COLD;
+	void ssystem4_map(address_map &map) ATTR_COLD;
+	void chessunit_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	void lcd1_output_w(u32 data) { m_lcd1_data = data; }
@@ -154,14 +164,6 @@ private:
 	u8 cu_pia_a_r();
 	void cu_pia_b_w(u8 data);
 	u8 cu_pia_b_r();
-
-	u8 m_inp_mux = 0;
-	u8 m_control = 0;
-	u8 m_shift = 0;
-	u32 m_lcd1_data = 0;
-	u64 m_lcd2_data = 0;
-	u8 m_lcd2_select = 0;
-	bool m_xor_kludge = false;
 };
 
 void ssystem3_state::machine_start()
@@ -179,9 +181,9 @@ void ssystem3_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 // Master Unit
 
@@ -350,9 +352,9 @@ u8 ssystem3_state::cu_pia_b_r()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void ssystem3_state::ssystem3_map(address_map &map)
 {
@@ -379,9 +381,9 @@ void ssystem3_state::chessunit_map(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( ssystem4 )
 	PORT_START("IN.0")
@@ -439,7 +441,7 @@ static INPUT_PORTS_START( ssystem3 )
 	PORT_CONFNAME( 0x01, 0x01, "Memory Unit" )
 	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
 	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
-	PORT_CONFNAME( 0x02, 0x02, "Chess Unit" ) PORT_CHANGED_MEMBER(DEVICE_SELF, ssystem3_state, cu_plug, 0)
+	PORT_CONFNAME( 0x02, 0x02, "Chess Unit" ) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(ssystem3_state::cu_plug), 0)
 	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
 	PORT_CONFSETTING(    0x02, DEF_STR( On ) )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_CUSTOM)
@@ -450,13 +452,13 @@ INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void ssystem3_state::ssystem4(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	M6502(config, m_maincpu, 4_MHz_XTAL / 2);
 	m_maincpu->set_addrmap(AS_PROGRAM, &ssystem3_state::ssystem4_map);
 
@@ -466,7 +468,7 @@ void ssystem3_state::ssystem4(machine_config &config)
 	m_via->writepb_handler().set(FUNC(ssystem3_state::control_w));
 	m_via->readpb_handler().set(FUNC(ssystem3_state::control_r));
 
-	/* video hardware */
+	// video hardware
 	MD4332B(config, m_lcd1);
 	m_lcd1->write_q().set(FUNC(ssystem3_state::lcd1_output_w));
 
@@ -480,7 +482,7 @@ void ssystem3_state::ssystem4(machine_config &config)
 
 	config.set_default_layout(layout_saitek_ssystem4);
 
-	/* sound hardware */
+	// sound hardware
 	SPEAKER(config, "speaker").front_center();
 	DAC_1BIT(config, m_dac).add_route(ALL_OUTPUTS, "speaker", 0.25);
 }
@@ -489,15 +491,15 @@ void ssystem3_state::ssystem3(machine_config &config)
 {
 	ssystem4(config);
 
-	/* basic machine hardware */
+	// basic machine hardware
 	m_maincpu->set_addrmap(AS_PROGRAM, &ssystem3_state::ssystem3_map);
 
-	M6808(config, m_subcpu, 6800000); // LC circuit, measured
+	M6808(config, m_subcpu, 6'800'000); // LC circuit, measured
 	m_subcpu->set_addrmap(AS_PROGRAM, &ssystem3_state::chessunit_map);
 
 	config.set_perfect_quantum(m_maincpu);
 
-	PIA6821(config, m_pia, 0);
+	PIA6821(config, m_pia);
 	m_pia->irqa_handler().set_inputline(m_subcpu, INPUT_LINE_NMI);
 	m_pia->writepa_handler().set(FUNC(ssystem3_state::cu_pia_a_w));
 	m_pia->readpa_handler().set(FUNC(ssystem3_state::cu_pia_a_r));
@@ -508,7 +510,7 @@ void ssystem3_state::ssystem3(machine_config &config)
 
 	NVRAM(config, "nvram", nvram_device::DEFAULT_ALL_0);
 
-	/* video hardware */
+	// video hardware
 	HLCD0438(config, m_lcd2[0], 0);
 	m_lcd2[0]->write_segs().set(FUNC(ssystem3_state::lcd2_output_w<0>));
 	m_lcd2[0]->write_data().set(m_lcd2[1], FUNC(hlcd0438_device::data_w));
@@ -530,17 +532,14 @@ void ssystem3_state::ssystem3(machine_config &config)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( ssystem3 )
 	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_LOAD("c19081e_ss-3-lrom.u4", 0x8000, 0x1000, CRC(9ea46ed3) SHA1(34eef85b356efbea6ddac1d1705b104fc8e2731a) ) // 2332
 	ROM_LOAD("c19082_ss-3-hrom.u5",  0x9000, 0x1000, CRC(52741e0b) SHA1(2a7b950f9810c5a14a1b9d5e6b2bd93da621662e) ) // "
-
-	// HACK! 6522 ACR register setup
-	ROM_FILL(0x946d, 1, 0xe0) // was 0xe3
 
 	ROM_REGION(0x10000, "subcpu", 0)
 	ROM_LOAD("c28a97m_ss-3l-rom", 0x4000, 0x0800, CRC(bf0b2a84) SHA1(286f56aca2e50b78ac1fae4a89413659aceb71d9) ) // 2316
@@ -561,9 +560,6 @@ ROM_START( ssystem4 )
 	ROM_LOAD("c45022_ss4-mrom", 0xe000, 0x1000, CRC(c6110af1) SHA1(4b63454a23b2fe6b5c8f3fa6718eb49770cb6907) ) // "
 	ROM_LOAD("c45023_ss4-hrom", 0xf000, 0x1000, CRC(ab4a4343) SHA1(6eeee7168e13dc1115cb5833f1938a8ea8c01d69) ) // "
 
-	// HACK! 6522 ACR register setup
-	ROM_FILL(0xd05b, 1, 0xe0) // was 0xe3
-
 	ROM_REGION(53552, "screen", 0) // looks same, but different pinout
 	ROM_LOAD("ssystem4.svg", 0, 53552, CRC(b69b12e3) SHA1(c2e39d015397d403309f1c23619fe8abc3745d87) )
 ROM_END
@@ -572,10 +568,11 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME      PARENT CMP MACHINE   INPUT     STATE           INIT           COMPANY, FULLNAME, FLAGS
-CONS( 1979, ssystem3, 0,      0, ssystem3, ssystem3, ssystem3_state, init_ssystem3, "SciSys / Novag", "Chess Champion: Super System III", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1980, ssystem4, 0,      0, ssystem4, ssystem4, ssystem3_state, empty_init,    "SciSys", "Chess Champion: Super System IV", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     CLASS           INIT           COMPANY, FULLNAME, FLAGS
+SYST( 1979, ssystem3, 0,      0,      ssystem3, ssystem3, ssystem3_state, init_ssystem3, "SciSys / Novag Industries / Philidor Software", "Chess Champion: Super System III", MACHINE_SUPPORTS_SAVE )
+
+SYST( 1980, ssystem4, 0,      0,      ssystem4, ssystem4, ssystem3_state, empty_init,    "SciSys / Philidor Software", "Chess Champion: Super System IV", MACHINE_SUPPORTS_SAVE )

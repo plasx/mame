@@ -5,8 +5,8 @@
     1942
 
 ***************************************************************************/
-#ifndef MAME_INCLUDES_1942_H
-#define MAME_INCLUDES_1942_H
+#ifndef MAME_CAPCOM_1942_H
+#define MAME_CAPCOM_1942_H
 
 #pragma once
 
@@ -40,21 +40,21 @@ public:
 	void _1942(machine_config &config);
 
 protected:
-	void machine_start() override;
-	void machine_reset() override;
-	void video_start() override;
+	void machine_start() override ATTR_COLD;
+	void machine_reset() override ATTR_COLD;
+	void video_start() override ATTR_COLD;
 
-	void _1942_map(address_map &map);
-	void sound_map(address_map &map);
+	void _1942_map(address_map &map) ATTR_COLD;
+	void sound_map(address_map &map) ATTR_COLD;
 
-	void _1942_bankswitch_w(uint8_t data);
-	void _1942_fgvideoram_w(offs_t offset, uint8_t data);
-	void _1942_bgvideoram_w(offs_t offset, uint8_t data);
-	void _1942_palette_bank_w(uint8_t data);
-	void _1942_scroll_w(offs_t offset, uint8_t data);
-	void _1942_c804_w(uint8_t data);
+	void bankswitch_w(uint8_t data);
+	void fgvideoram_w(offs_t offset, uint8_t data);
+	void bgvideoram_w(offs_t offset, uint8_t data);
+	void palette_bank_w(uint8_t data);
+	void scroll_w(offs_t offset, uint8_t data);
+	void control_w(uint8_t data);
 	void _1942_palette(palette_device &palette) const;
-	TIMER_DEVICE_CALLBACK_MEMBER(_1942_scanline);
+	TIMER_DEVICE_CALLBACK_MEMBER(scanline);
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	virtual void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -91,14 +91,13 @@ public:
 	void _1942p(machine_config &config);
 
 protected:
-	void video_start() override;
+	void video_start() override ATTR_COLD;
 
-	void _1942p_map(address_map &map);
-	void _1942p_sound_io(address_map &map);
-	void _1942p_sound_map(address_map &map);
+	void _1942p_map(address_map &map) ATTR_COLD;
+	void _1942p_sound_io(address_map &map) ATTR_COLD;
+	void _1942p_sound_map(address_map &map) ATTR_COLD;
 
-	void _1942p_f600_w(uint8_t data);
-	void _1942p_palette_w(offs_t offset, uint8_t data);
+	void palette_w(offs_t offset, uint8_t data);
 
 	void _1942p_palette(palette_device &palette) const;
 
@@ -107,4 +106,4 @@ protected:
 	required_shared_ptr<uint8_t> m_protopal;
 };
 
-#endif // MAME_INCLUDES_1942_H
+#endif // MAME_CAPCOM_1942_H

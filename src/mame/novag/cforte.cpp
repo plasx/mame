@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Berger
-/******************************************************************************
+/*******************************************************************************
 
 Novag Constellation Forte
 
@@ -17,7 +17,7 @@ I/O is similar to supercon
 TODO:
 - add power-off NMI? does nothing, it will just go into an infinite loop
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
@@ -32,7 +32,7 @@ TODO:
 #include "speaker.h"
 
 // internal artwork
-#include "novag_cforte.lh" // clickable
+#include "novag_cforte.lh"
 
 
 namespace {
@@ -54,7 +54,7 @@ public:
 	void cforte(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
@@ -65,8 +65,11 @@ private:
 	required_device<beep_device> m_beeper;
 	required_ioport_array<8> m_inputs;
 
+	u8 m_inp_mux = 0;
+	u8 m_led_select = 0;
+
 	// address maps
-	void main_map(address_map &map);
+	void main_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	void update_display();
@@ -75,9 +78,6 @@ private:
 	void control_w(u8 data);
 	u8 input1_r();
 	u8 input2_r();
-
-	u8 m_inp_mux = 0;
-	u8 m_led_select = 0;
 };
 
 void cforte_state::machine_start()
@@ -89,11 +89,11 @@ void cforte_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
-// HLCD0538
+// LCD
 
 void cforte_state::lcd_output_w(u64 data)
 {
@@ -115,7 +115,7 @@ void cforte_state::lcd_output_w(u64 data)
 }
 
 
-// TTL/generic
+// misc
 
 void cforte_state::update_display()
 {
@@ -135,9 +135,9 @@ void cforte_state::control_w(u8 data)
 	// d0: HLCD0538 data in
 	// d1: HLCD0538 clk
 	// d2: HLCD0538 lcd
-	m_lcd->data_w(data & 1);
-	m_lcd->clk_w(data >> 1 & 1);
-	m_lcd->lcd_w(data >> 2 & 1);
+	m_lcd->data_w(BIT(data, 0));
+	m_lcd->clk_w(BIT(data, 1));
+	m_lcd->lcd_w(BIT(data, 2));
 
 	// d3: ? (goes high at power-off NMI)
 
@@ -146,7 +146,7 @@ void cforte_state::control_w(u8 data)
 	update_display();
 
 	// d7: enable beeper
-	m_beeper->set_state(data >> 7 & 1);
+	m_beeper->set_state(BIT(data, 7));
 }
 
 u8 cforte_state::input1_r()
@@ -171,15 +171,14 @@ u8 cforte_state::input2_r()
 			data |= m_inputs[i]->read() << 6;
 
 	// other: ?
-
 	return ~data;
 }
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void cforte_state::main_map(address_map &map)
 {
@@ -193,9 +192,9 @@ void cforte_state::main_map(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( cforte )
 	PORT_START("IN.0")
@@ -227,19 +226,19 @@ static INPUT_PORTS_START( cforte )
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_2) PORT_NAME("Set Level")
 
 	PORT_START("IN.7")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_Q) PORT_NAME("Go / ->")
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_1) PORT_NAME("Take Back / Restore / <-")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_Q) PORT_NAME("Go / Right")
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_1) PORT_NAME("Take Back / Restore / Left")
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void cforte_state::cforte(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	R65C02(config, m_maincpu, 10_MHz_XTAL/2);
 	m_maincpu->set_addrmap(AS_PROGRAM, &cforte_state::main_map);
 
@@ -254,13 +253,13 @@ void cforte_state::cforte(machine_config &config)
 	m_board->set_delay(attotime::from_msec(200));
 	m_board->set_nvram_enable(true);
 
-	/* video hardware */
+	// video hardware
 	HLCD0538(config, m_lcd).write_cols().set(FUNC(cforte_state::lcd_output_w));
 	PWM_DISPLAY(config, m_display).set_size(3+13, 8);
 	m_display->set_segmask(0x3ff0, 0xff);
 	config.set_default_layout(layout_novag_cforte);
 
-	/* sound hardware */
+	// sound hardware
 	SPEAKER(config, "mono").front_center();
 	BEEP(config, m_beeper, 32.768_kHz_XTAL/32); // 1024Hz
 	m_beeper->add_route(ALL_OUTPUTS, "mono", 0.25);
@@ -268,9 +267,9 @@ void cforte_state::cforte(machine_config &config)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( cfortea )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -288,10 +287,10 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME     PARENT  CMP MACHINE  INPUT   STATE         INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1986, cfortea, 0,       0, cforte,  cforte, cforte_state, empty_init, "Novag", "Constellation Forte (version A)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1986, cforteb, cfortea, 0, cforte,  cforte, cforte_state, empty_init, "Novag", "Constellation Forte (version B)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME     PARENT   COMPAT  MACHINE  INPUT   CLASS         INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1986, cfortea, 0,       0,      cforte,  cforte, cforte_state, empty_init, "Novag Industries / Intelligent Heuristic Programming", "Constellation Forte (version A)", MACHINE_SUPPORTS_SAVE )
+SYST( 1986, cforteb, cfortea, 0,      cforte,  cforte, cforte_state, empty_init, "Novag Industries / Intelligent Heuristic Programming", "Constellation Forte (version B)", MACHINE_SUPPORTS_SAVE )

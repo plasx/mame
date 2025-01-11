@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
 
-#ifndef MAME_MACHINE_XAVIX_MATH_H
-#define MAME_MACHINE_XAVIX_MATH_H
+#ifndef MAME_TVGAMES_XAVIX_MATH_H
+#define MAME_TVGAMES_XAVIX_MATH_H
 
 class xavix_math_device : public device_t
 {
@@ -19,16 +19,22 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
+	void do_math(bool mul_shf);
 
-	uint8_t m_barrel_params[2];
-	uint8_t m_multparams[3];
+	uint8_t m_mpr;
+	uint8_t m_mpd;
+
 	uint8_t m_multresults[2];
+
+	uint8_t m_mad;
+	uint8_t m_sgn_mpd;
+	uint8_t m_sgn_mpr;
 };
 
 DECLARE_DEVICE_TYPE(XAVIX_MATH, xavix_math_device)
 
-#endif // MAME_MACHINE_XAVIX_MATH_H
+#endif // MAME_TVGAMES_XAVIX_MATH_H

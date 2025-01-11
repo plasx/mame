@@ -5,8 +5,8 @@
     The Game Room Lethal Justice hardware
 
 **************************************************************************/
-#ifndef MAME_INCLUDES_LETHALJ_H
-#define MAME_INCLUDES_LETHALJ_H
+#ifndef MAME_ICE_LETHALJ_H
+#define MAME_ICE_LETHALJ_H
 
 #pragma once
 
@@ -34,12 +34,13 @@ public:
 
 	void lethalj(machine_config &config);
 	void gameroom(machine_config &config);
+	void franticf(machine_config &config);
 
 	void init_cfarm();
 	void init_ripribit();
 	void init_cclownz();
 
-	DECLARE_CUSTOM_INPUT_MEMBER(cclownz_paddle);
+	ioport_value cclownz_paddle();
 
 private:
 	void ripribit_control_w(uint16_t data);
@@ -51,10 +52,10 @@ private:
 	inline void get_crosshair_xy(int player, int *x, int *y);
 	TMS340X0_SCANLINE_IND16_CB_MEMBER(scanline_update);
 
-	void lethalj_map(address_map &map);
+	void lethalj_map(address_map &map) ATTR_COLD;
 
 	virtual void machine_start() override { m_lamps.resolve(); }
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(gen_ext1_int);
 
@@ -81,4 +82,4 @@ private:
 	uint8_t m_blank_palette = 0;
 };
 
-#endif // MAME_INCLUDES_LETHALJ_H
+#endif // MAME_ICE_LETHALJ_H

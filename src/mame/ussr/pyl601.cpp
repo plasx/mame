@@ -50,6 +50,10 @@ The BASIC
 
 #include "formats/pyldin_dsk.h"
 
+#include "utf8.h"
+
+
+namespace {
 
 class pyl601_state : public driver_device
 {
@@ -89,11 +93,11 @@ private:
 	MC6845_UPDATE_ROW(pyl601a_update_row);
 	uint8_t selectedline(uint16_t data);
 
-	virtual void machine_reset() override;
-	virtual void machine_start() override;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void machine_start() override ATTR_COLD;
 	INTERRUPT_GEN_MEMBER(pyl601_interrupt);
 	static void floppy_formats(format_registration &fr);
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	uint8_t m_rom_page = 0U;
 	uint32_t m_vdisk_addr = 0U;
@@ -639,6 +643,10 @@ ROM_START( pyl601a )
 	ROM_REGION(0x0800, "keyboard", 0)
 	ROM_LOAD( "keyboard.rom", 0x0000, 0x0800, CRC(41fbe5ca) SHA1(875adaef53bc37e92ad0b6b6ee3d8fd28344d358))
 ROM_END
+
+} // anonymous namespace
+
+
 /* Driver */
 
 /*    YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT   CLASS         INIT         COMPANY             FULLNAME       FLAGS */

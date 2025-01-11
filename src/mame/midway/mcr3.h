@@ -5,8 +5,8 @@
     Midway MCR-3 system
 
 **************************************************************************/
-#ifndef MAME_INCLUDES_MCR3_H
-#define MAME_INCLUDES_MCR3_H
+#ifndef MAME_MIDWAY_MCR3_H
+#define MAME_MIDWAY_MCR3_H
 
 #pragma once
 
@@ -66,13 +66,13 @@ protected:
 	uint32_t screen_update_mcr3(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	uint32_t screen_update_spyhunt(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void mcrmono_map(address_map &map);
-	void mcrmono_portmap(address_map &map);
-	void spyhunt_map(address_map &map);
-	void spyhunt_portmap(address_map &map);
+	void mcrmono_map(address_map &map) ATTR_COLD;
+	void mcrmono_portmap(address_map &map) ATTR_COLD;
+	void spyhunt_map(address_map &map) ATTR_COLD;
+	void spyhunt_portmap(address_map &map) ATTR_COLD;
 
 	virtual void machine_start() override { m_lamps.resolve(); }
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 	optional_shared_ptr<uint8_t> m_spyhunt_alpharam;
 	required_device<screen_device> m_screen;
@@ -149,4 +149,4 @@ private:
 	required_ioport_array<2> m_analog_inputs;
 };
 
-#endif // MAME_INCLUDES_MCR3_H
+#endif // MAME_MIDWAY_MCR3_H

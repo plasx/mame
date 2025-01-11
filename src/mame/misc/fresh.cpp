@@ -31,6 +31,7 @@ rom 5 and 6 are prg roms
 #include "tilemap.h"
 
 
+namespace {
 
 class fresh_state : public driver_device
 {
@@ -49,7 +50,7 @@ public:
 	void fresh(machine_config &config);
 
 protected:
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	tilemap_t *m_bg_tilemap = nullptr;
@@ -107,7 +108,7 @@ private:
 	TIMER_DEVICE_CALLBACK_MEMBER(fake_scanline);
 
 	uint32_t screen_update_fresh(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	void fresh_map(address_map &map);
+	void fresh_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -624,6 +625,7 @@ ROM_START( fresh )
 	ROM_LOAD( "fruit-fresh4.u46", 0x80000, 0x80000, CRC(9b6c7571) SHA1(649cf3c50e2cd8c02f0f730e5ded59cf0ea37c37) )
 ROM_END
 
+} // anonymous namespace
 
 
 // title shows Fruit Fresh but on resetting you get text strings of 'Dream World V2.41SI 97. 1.28'

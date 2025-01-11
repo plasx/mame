@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Olivier Galibert
-#ifndef MAME_MACHINE_MAPLE_DC_H
-#define MAME_MACHINE_MAPLE_DC_H
+#ifndef MAME_SEGA_MAPLE_DC_H
+#define MAME_SEGA_MAPLE_DC_H
 
 #pragma once
 
@@ -39,7 +39,7 @@ public:
 	void sb_msys_w(uint32_t data);
 	void sb_mdapro_w(uint32_t data); // 5f6c8c
 
-	void amap(address_map &map);
+	void amap(address_map &map) ATTR_COLD;
 
 	void end_of_reply();
 	void register_port(int port, maple_device *device);
@@ -47,8 +47,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(dma_timer_tick);
 
@@ -81,4 +81,4 @@ private:
 
 DECLARE_DEVICE_TYPE(MAPLE_DC, maple_dc_device)
 
-#endif // MAME_MACHINE_MAPLE_DC_H
+#endif // MAME_SEGA_MAPLE_DC_H

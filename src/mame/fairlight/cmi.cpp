@@ -91,6 +91,7 @@
 #include "machine/6821pia.h"
 #include "machine/6850acia.h"
 #include "machine/6840ptm.h"
+#include "machine/74259.h"
 #include "machine/7474.h"
 #include "machine/bankdev.h"
 #include "machine/clock.h"
@@ -104,10 +105,13 @@
 #include "screen.h"
 #include "speaker.h"
 
-#define LOG_CHANNELS (1 << 1U)
+#define LOG_CHANNELS (1U << 1)
 
 #define VERBOSE     (0)
 #include "logmacro.h"
+
+
+namespace {
 
 #define Q209_CPU_CLOCK          (40.21_MHz_XTAL / 40) // verified by manual
 #define SYSTEM_CAS_CLOCK        (40.21_MHz_XTAL / 20) // likewise
@@ -137,8 +141,8 @@
 #define VBLANK_END              0
 #define VBLANK_START            256
 
-#define HBLANK_FREQ     (PIXEL_CLOCK / HTOTAL)
-#define VBLANK_FREQ     (HBLANK_FREQ / VTOTAL)
+#define HBLANK_FREQ             (PIXEL_CLOCK / HTOTAL)
+#define VBLANK_FREQ             (HBLANK_FREQ / VTOTAL)
 
 #define MAPSEL_P2_B             0x00
 #define MAPSEL_P2_A             0x03
@@ -160,11 +164,6 @@
 #define IRQ_IPI1_LEVEL          (3 ^ 7)
 #define IRQ_SMIDINT_LEVEL       (3 ^ 7)
 #define IRQ_AIC_LEVEL           (4 ^ 7)
-
-static const int ch_int_levels[8] =
-{
-	12 ^ 7, 8 ^ 7, 13 ^ 7, 9 ^ 7, 14 ^ 7, 10 ^ 7, 15 ^ 7, 11  ^ 7
-};
 
 #define IRQ_PERRINT_LEVEL       (0 ^ 7)
 #define IRQ_RTCINT_LEVEL        (0 ^ 7)
@@ -211,8 +210,7 @@ public:
 		, m_midi_out(*this, "midi_out_%u", 1U)
 		, m_midi_in(*this, "midi_in_%u", 1U)
 		, m_qfc9_region(*this, "qfc9")
-		, m_floppy0(*this, "wd1791:0")
-		, m_floppy1(*this, "wd1791:1")
+		, m_floppy(*this, "wd1791:%u", 0U)
 		, m_wd1791(*this, "wd1791")
 		, m_channels(*this, "cmi01a_%u", 0)
 		, m_screen(*this, "screen")
@@ -225,22 +223,22 @@ public:
 	{
 	}
 
-	virtual void machine_reset() override;
-	virtual void machine_start() override;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void machine_start() override ATTR_COLD;
 
 	void set_interrupt(int cpunum, int level, int state);
 
 	void init_cmi2x();
 
 	// CPU card
-	DECLARE_WRITE_LINE_MEMBER(q133_acia_irq);
+	void q133_acia_irq(int state);
 	void i8214_cpu1_w(u8 data);
 	void i8214_cpu2_w(u8 data);
-	DECLARE_WRITE_LINE_MEMBER(maincpu2_irq0_w);
-	DECLARE_WRITE_LINE_MEMBER(i8214_1_int_w);
-	DECLARE_WRITE_LINE_MEMBER(i8214_2_int_w);
-	DECLARE_WRITE_LINE_MEMBER(i8214_3_int_w);
-	DECLARE_WRITE_LINE_MEMBER(i8214_3_enlg);
+	void maincpu2_irq0_w(int state);
+	void i8214_1_int_w(int state);
+	void i8214_2_int_w(int state);
+	void i8214_3_int_w(int state);
+	void i8214_3_enlg(int state);
 	u8 shared_ram_r(offs_t offset);
 	void shared_ram_w(offs_t offset, u8 data);
 	template<int CpuNum> u8 perr_r(offs_t offset);
@@ -259,9 +257,9 @@ public:
 	void q133_1_porta_w(u8 data);
 	void q133_1_portb_w(u8 data);
 
-	DECLARE_WRITE_LINE_MEMBER(cmi_iix_vblank);
-	IRQ_CALLBACK_MEMBER(cpu1_interrupt_callback);
-	IRQ_CALLBACK_MEMBER(cpu2_interrupt_callback);
+	void cmi_iix_vblank(int state);
+	u8 vfetch1_r(offs_t offset);
+	u8 vfetch2_r(offs_t offset);
 
 	// Video-related
 	u8 video_r(offs_t offset);
@@ -283,41 +281,38 @@ public:
 	template <int CpuNum> u8 periphs_range_r(offs_t offset);
 	template <int CpuNum> void periphs_range_w(offs_t offset, u8 data);
 
-	u8 tvt_r();
-	void tvt_w(u8 data);
-	DECLARE_WRITE_LINE_MEMBER(pia_q219_irqa);
-	DECLARE_WRITE_LINE_MEMBER(pia_q219_irqb);
-	DECLARE_WRITE_LINE_MEMBER(ptm_q219_irq);
+	[[maybe_unused]] u8 tvt_r();
+	[[maybe_unused]] void tvt_w(u8 data);
+	void pia_q219_irqa(int state);
+	void pia_q219_irqb(int state);
+	void ptm_q219_irq(int state);
 	u32 screen_update_cmi2x(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	// Memory mapping
 	template<int CpuNum> u8 rom_r(offs_t offset);
 	void map_ram_w(offs_t offset, u8 data);
-	template<int CpuNum> u8 vector_r(offs_t offset);
 	template<int CpuNum> u8 map_r();
 	template<int CpuNum> void map_w(u8 data);
 	u8 atomic_r();
-	void cpufunc_w(u8 data);
+	template<int CpuNum> void ipi_w(int state);
+	template<int CpuNum> void nmi_reset_w(int state);
+	template<int CpuNum> void ms_w(int state);
 	u8 parity_r(offs_t offset);
 	void mapsel_w(offs_t offset, u8 data);
-	template<int CpuNum> u8 irq_ram_r(offs_t offset);
-	template<int CpuNum> void irq_ram_w(offs_t offset, u8 data);
 	template<int CpuNum> u8 scratch_ram_r(offs_t offset);
 	template<int CpuNum> void scratch_ram_w(offs_t offset, u8 data);
-	template<int CpuNum> u8 scratch_ram_fa_r(offs_t offset);
-	template<int CpuNum> void scratch_ram_fa_w(offs_t offset, u8 data);
 
 	// MIDI/SMPTE
 	void midi_dma_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	u16 midi_dma_r(offs_t offset);
-	DECLARE_WRITE_LINE_MEMBER(midi_ptm0_c3_w);
+	void midi_ptm0_c3_w(int state);
 	void midi_latch_w(u8 data);
 
 	// Floppy
 	void fdc_w(offs_t offset, u8 data);
 	u8 fdc_r(offs_t offset);
-	DECLARE_WRITE_LINE_MEMBER(wd1791_irq);
-	DECLARE_WRITE_LINE_MEMBER(wd1791_drq);
+	void wd1791_irq(int state);
+	void wd1791_drq(int state);
 
 	// Master card
 	u8 cmi02_r(offs_t offset);
@@ -326,27 +321,27 @@ public:
 	u8 cmi02_chsel_r();
 	void master_tune_w(u8 data);
 	u8 master_tune_r();
-	DECLARE_WRITE_LINE_MEMBER(cmi02_ptm_irq);
-	DECLARE_WRITE_LINE_MEMBER(cmi02_ptm_o2);
-	DECLARE_WRITE_LINE_MEMBER(cmi02_pia2_irqa_w);
-	DECLARE_WRITE_LINE_MEMBER(cmi02_pia2_cb2_w);
+	void cmi02_ptm_irq(int state);
+	void cmi02_ptm_o2(int state);
+	void cmi02_pia2_irqa_w(int state);
+	void cmi02_pia2_cb2_w(int state);
 
 	u8 cmi07_r();
 	void cmi07_w(u8 data);
 
-	DECLARE_WRITE_LINE_MEMBER(msm5832_irq_w);
-	DECLARE_WRITE_LINE_MEMBER(cmi07_irq);
-	DECLARE_WRITE_LINE_MEMBER(q133_acia_clock);
+	void msm5832_irq_w(int state);
+	void cmi07_irq(int state);
+	void q133_acia_clock(int state);
 
-	template<int Channel> DECLARE_WRITE_LINE_MEMBER(channel_irq);
+	template<int Channel> void channel_irq(int state);
 
 	void cmi2x(machine_config &config);
-	void cmi07cpu_map(address_map &map);
-	void maincpu1_map(address_map &map);
-	void maincpu2_map(address_map &map);
-	void midicpu_map(address_map &map);
+	void cmi07cpu_map(address_map &map) ATTR_COLD;
+	void maincpu1_map(address_map &map) ATTR_COLD;
+	void maincpu2_map(address_map &map) ATTR_COLD;
+	void midicpu_map(address_map &map) ATTR_COLD;
 
-	template <int CpuNum> void cpu_periphs_map(address_map &map);
+	template <int CpuNum> void cpu_periphs_map(address_map &map) ATTR_COLD;
 
 protected:
 	required_device<mc6809e_device> m_maincpu1;
@@ -377,8 +372,7 @@ protected:
 	required_device_array<midi_port_device, 3> m_midi_in;
 
 	required_memory_region m_qfc9_region;
-	required_device<floppy_connector> m_floppy0;
-	required_device<floppy_connector> m_floppy1;
+	required_device_array<floppy_connector, 2> m_floppy;
 	required_device<fd1791_device> m_wd1791;
 
 	required_device_array<cmi01a_device, 8> m_channels;
@@ -436,8 +430,6 @@ private:
 	int     m_cpu_active_space[2]{};
 	int     m_cpu_map_switch[2]{};
 	u8 m_curr_mapinfo[2]{};
-	u8 m_irq_address[2][2]{};
-	int     m_m6809_bs_hack_cnt[2]{};
 
 	/* Q219 lightpen/graphics card */
 	std::unique_ptr<u8[]>    m_video_ram;
@@ -919,11 +911,6 @@ void cmi_state::map_ram_w(offs_t offset, u8 data)
 	}
 }
 
-template<int CpuNum> u8 cmi_state::vector_r(offs_t offset)
-{
-	return m_q133_rom[(CpuNum ? 0xbfe : 0xffe) + offset];
-}
-
 template<int CpuNum> u8 cmi_state::map_r()
 {
 	return (m_cpu_active_space[1] << 2) | (m_cpu_active_space[0] << 1) | CpuNum;
@@ -932,25 +919,6 @@ template<int CpuNum> u8 cmi_state::map_r()
 template<int CpuNum> void cmi_state::map_w(u8 data)
 {
 	m_map_switch_timer->adjust(attotime::from_ticks(data & 0xf, M6809_CLOCK), CpuNum);
-}
-
-template<int CpuNum> u8 cmi_state::irq_ram_r(offs_t offset)
-{
-	if (machine().side_effects_disabled())
-		return m_scratch_ram[CpuNum][0xf8 + offset];
-
-	if (m_m6809_bs_hack_cnt[CpuNum] > 0)
-	{
-		m_m6809_bs_hack_cnt[CpuNum]--;
-		LOG("CPU%d IRQ vector byte %d (offset %d): %02x\n", CpuNum + 1, 1 - m_m6809_bs_hack_cnt[CpuNum], offset, m_irq_address[CpuNum][offset]);
-		return m_irq_address[CpuNum][offset];
-	}
-	return m_scratch_ram[CpuNum][0xf8 + offset];
-}
-
-template<int CpuNum> void cmi_state::irq_ram_w(offs_t offset, u8 data)
-{
-	m_scratch_ram[CpuNum][0xf8 + offset] = data;
 }
 
 TIMER_CALLBACK_MEMBER(cmi_state::switch_map)
@@ -976,26 +944,19 @@ u8 cmi_state::atomic_r()
 	return 0;
 }
 
-void cmi_state::cpufunc_w(u8 data)
+template<int CpuNum> void cmi_state::ipi_w(int state)
 {
-	int cpunum = data & 1;
-	int idx = data & 6;
-	int bit = (data & 8) >> 3;
+	set_interrupt(CpuNum, IRQ_IPI2_LEVEL, state ? ASSERT_LINE : CLEAR_LINE);
+}
 
-	switch (idx)
-	{
-		case 0: set_interrupt(cpunum, IRQ_IPI2_LEVEL, bit ? ASSERT_LINE : CLEAR_LINE);
-				break;
-		case 2: // TODO: Hardware trace
-				break;
-		case 4: m_cpu_map_switch[cpunum] = bit;
-				break;
-		case 6: if (cpunum == CPU_1)
-					m_maincpu1->set_input_line(M6809_FIRQ_LINE, bit ? ASSERT_LINE : CLEAR_LINE);
-				else
-					m_maincpu2->set_input_line(M6809_FIRQ_LINE, bit ? ASSERT_LINE : CLEAR_LINE);
-				break;
-	}
+template<int CpuNum> void cmi_state::nmi_reset_w(int state)
+{
+	// TODO: Hardware trace
+}
+
+template<int CpuNum> void cmi_state::ms_w(int state)
+{
+	m_cpu_map_switch[CpuNum] = state;
 }
 
 u8 cmi_state::parity_r(offs_t offset)
@@ -1044,7 +1005,7 @@ u16 cmi_state::midi_dma_r(offs_t offset)
 	return data;
 }
 
-WRITE_LINE_MEMBER(cmi_state::midi_ptm0_c3_w)
+void cmi_state::midi_ptm0_c3_w(int state)
 {
 	m_midi_ptm[1]->set_clock(0, state);
 	m_midi_ptm[1]->set_clock(1, state);
@@ -1144,7 +1105,7 @@ template <int CpuNum> void cmi_state::cpu_periphs_map(address_map &map)
 	map(0x0800, 0x0bff).rom().region("q133", 0x2800 - CpuNum * 0x1000);
 	map(0x0c40, 0x0c4f).rw(FUNC(cmi_state::parity_r), FUNC(cmi_state::mapsel_w));
 	map(0x0c5a, 0x0c5b).noprw(); // Q077 HDD controller - not installed
-	map(0x0c5e, 0x0c5e).rw(FUNC(cmi_state::atomic_r), FUNC(cmi_state::cpufunc_w));
+	map(0x0c5e, 0x0c5e).r(FUNC(cmi_state::atomic_r)).w("cpulatch", FUNC(ls259_device::write_nibble_d3));
 	map(0x0c5f, 0x0c5f).rw(FUNC(cmi_state::map_r<CpuNum>), FUNC(cmi_state::map_w<CpuNum>));
 	map(0x0c80, 0x0c83).rw(m_q133_acia[0], FUNC(mos6551_device::read), FUNC(mos6551_device::write));
 	map(0x0c84, 0x0c87).rw(m_q133_acia[1], FUNC(mos6551_device::read), FUNC(mos6551_device::write));
@@ -1164,10 +1125,7 @@ template <int CpuNum> void cmi_state::cpu_periphs_map(address_map &map)
 	map(0x0cfc, 0x0cfc).w(FUNC(cmi_state::i8214_cpu1_w));
 	map(0x0cfd, 0x0cfd).w(FUNC(cmi_state::i8214_cpu2_w));
 	map(0x0d00, 0x0eff).rw(FUNC(cmi_state::shared_ram_r), FUNC(cmi_state::shared_ram_w));
-	map(0x0f00, 0x0ff7).rw(FUNC(cmi_state::scratch_ram_r<CpuNum>), FUNC(cmi_state::scratch_ram_w<CpuNum>));
-	map(0x0ff8, 0x0ff9).rw(FUNC(cmi_state::irq_ram_r<CpuNum>), FUNC(cmi_state::irq_ram_w<CpuNum>));
-	map(0x0ffa, 0x0ffd).rw(FUNC(cmi_state::scratch_ram_fa_r<CpuNum>), FUNC(cmi_state::scratch_ram_fa_w<CpuNum>));
-	map(0x0ffe, 0x0fff).r(FUNC(cmi_state::vector_r<CpuNum>));
+	map(0x0f00, 0x0fff).rw(FUNC(cmi_state::scratch_ram_r<CpuNum>), FUNC(cmi_state::scratch_ram_w<CpuNum>));
 }
 
 /* Input ports */
@@ -1190,16 +1148,6 @@ template <int CpuNum> u8 cmi_state::scratch_ram_r(offs_t offset)
 template <int CpuNum> void cmi_state::scratch_ram_w(offs_t offset, u8 data)
 {
 	m_scratch_ram[CpuNum][offset] = data;
-}
-
-template <int CpuNum> u8 cmi_state::scratch_ram_fa_r(offs_t offset)
-{
-	return m_scratch_ram[CpuNum][0xfa + offset];
-}
-
-template <int CpuNum> void cmi_state::scratch_ram_fa_w(offs_t offset, u8 data)
-{
-	m_scratch_ram[CpuNum][0xfa + offset] = data;
 }
 
 bool cmi_state::map_is_active(int cpunum, int map, u8 *map_info)
@@ -1266,7 +1214,7 @@ u8 cmi_state::cmi07_r()
 	return 0xff;
 }
 
-WRITE_LINE_MEMBER( cmi_state::q133_acia_irq )
+void cmi_state::q133_acia_irq(int state)
 {
 	set_interrupt(CPU_1, IRQ_ACINT_LEVEL, state ? ASSERT_LINE : CLEAR_LINE);
 }
@@ -1320,14 +1268,10 @@ void cmi_state::write_fdc_ctrl(u8 data)
 	int drive = data & 1;
 	int side = BIT(data, 5) ? 1 : 0;
 
-	switch (drive)
-	{
-	case 0: m_wd1791->set_floppy(m_floppy0->get_device()); break;
-	case 1: m_wd1791->set_floppy(m_floppy1->get_device()); break;
-	}
+	m_wd1791->set_floppy(m_floppy[drive]->get_device());
 
-	if (m_floppy0->get_device()) m_floppy0->get_device()->ss_w(side);
-	if (m_floppy1->get_device()) m_floppy1->get_device()->ss_w(side);
+	if (m_floppy[0]->get_device()) m_floppy[0]->get_device()->ss_w(side);
+	if (m_floppy[1]->get_device()) m_floppy[1]->get_device()->ss_w(side);
 
 	m_wd1791->dden_w(BIT(data, 7) ? true : false);
 
@@ -1442,7 +1386,7 @@ void cmi_state::fdc_dma_transfer()
 	m_fdc_dma_cnt.w.l++;
 }
 
-WRITE_LINE_MEMBER( cmi_state::wd1791_irq )
+void cmi_state::wd1791_irq(int state)
 {
 	if (state)
 	{
@@ -1459,7 +1403,7 @@ WRITE_LINE_MEMBER( cmi_state::wd1791_irq )
 	}
 }
 
-WRITE_LINE_MEMBER( cmi_state::wd1791_drq )
+void cmi_state::wd1791_drq(int state)
 {
 	m_fdc_drq = state;
 	if (state)
@@ -1513,25 +1457,25 @@ u8 cmi_state::cmi02_chsel_r()
 	return m_cmi02_pia_chsel;
 }
 
-WRITE_LINE_MEMBER( cmi_state::cmi02_ptm_irq )
+void cmi_state::cmi02_ptm_irq(int state)
 {
 	m_cmi02_ptm_irq = state;
 	set_interrupt(CPU_1, IRQ_TIMINT_LEVEL, m_cmi02_ptm_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER( cmi_state::cmi02_ptm_o2 )
+void cmi_state::cmi02_ptm_o2(int state)
 {
 	m_cmi02_ptm->set_c1(state);
 	m_cmi02_ptm->set_c3(state);
 }
 
-WRITE_LINE_MEMBER( cmi_state::cmi02_pia2_irqa_w )
+void cmi_state::cmi02_pia2_irqa_w(int state)
 {
 	LOG("%s: cmi02_pia2_irqa_w: %d\n", machine().describe_context(), state);
 	set_interrupt(CPU_2, IRQ_ADINT_LEVEL, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER( cmi_state::cmi02_pia2_cb2_w )
+void cmi_state::cmi02_pia2_cb2_w(int state)
 {
 	LOG("%s: cmi02_pia2_cb2_w: %d\n", machine().describe_context(), state);
 	m_cmi02_pia[1]->ca1_w(1);
@@ -1633,13 +1577,14 @@ void cmi_state::cmi02_w(offs_t offset, u8 data)
 }
 
 template<int Channel>
-WRITE_LINE_MEMBER(cmi_state::channel_irq)
+void cmi_state::channel_irq(int state)
 {
 	if (Channel == 0)
 	{
 		LOGMASKED(LOG_CHANNELS, "Channel IRQ: %d\n", state);
 	}
-	set_interrupt(CPU_1, ch_int_levels[Channel], state);
+	static const int ch_int_levels[8] = { 12, 8, 13, 9, 14, 10, 15, 11 };
+	set_interrupt(CPU_1, ch_int_levels[Channel] ^ 7, state);
 }
 
 void cmi_state::i8214_cpu1_w(u8 data)
@@ -1722,53 +1667,62 @@ void cmi_state::aic_ad565_lsb_w(u8 data)
  *
  *************************************/
 
-WRITE_LINE_MEMBER( cmi_state::ptm_q219_irq )
+void cmi_state::ptm_q219_irq(int state)
 {
 	set_interrupt(CPU_2, IRQ_RINT_LEVEL, state);
 }
 
-IRQ_CALLBACK_MEMBER( cmi_state::cpu1_interrupt_callback )
+u8 cmi_state::vfetch1_r(offs_t offset)
 {
-	/* Switch to mapping A */
+	// Switch to mapping A
 	m_cpu_active_space[CPU_1] = MAPPING_A;
 	update_address_space(CPU_1, m_map_sel[MAPSEL_P1_A]);
 
-	if (irqline == INPUT_LINE_IRQ0)
+	if ((offset & 0x000e) == 0x0008)
 	{
+		// IRQ vector
 		int vector = (m_hp_int ? 0xffe0 : 0xffd0);
 		int level = (m_hp_int ? m_i8214[2]->a_r() : m_i8214[0]->a_r()) ^ 7;
-		m_irq_address[CPU_1][0] = m_cpu1space->read_byte(vector + level*2);
-		m_irq_address[CPU_1][1] = m_cpu1space->read_byte(vector + level*2 + 1);
-
-		m_m6809_bs_hack_cnt[CPU_1] = 2;
-
-		LOG("%s: CPU1 interrupt, will be pushing address %02x%02x\n", machine().describe_context(), m_irq_address[CPU_1][0], m_irq_address[CPU_1][1]);
+		u8 irq_address = m_cpu1space->read_byte(vector + level * 2 + BIT(offset, 0));
+		LOG("%s: CPU1 IRQ vector %s byte: %02x\n", machine().describe_context(), BIT(offset, 0) ? "low" : "high", irq_address);
+		return irq_address;
+	}
+	else if ((offset & 0x000e) == 0x000e)
+	{
+		// RESET vector
+		return m_q133_rom[offset & 0xfff];
 	}
 	else
 	{
-		LOG("%s: Some other CPU1 interrupt, line %d\n", irqline);
+		LOG("%s: Some other CPU1 interrupt, fetching vector from $%04x\n", machine().describe_context(), offset);
+		return m_scratch_ram[CPU_1][offset & 0xff];
 	}
-
-	return 0;
 }
 
-IRQ_CALLBACK_MEMBER( cmi_state::cpu2_interrupt_callback )
+u8 cmi_state::vfetch2_r(offs_t offset)
 {
-	/* Switch to mapping A */
+	// Switch to mapping A
 	m_cpu_active_space[CPU_2] = MAPPING_A;
 	update_address_space(CPU_2, m_map_sel[MAPSEL_P2_A]);
 
-	if (irqline == INPUT_LINE_IRQ0)
+	if ((offset & 0x000e) == 0x0008)
 	{
+		// IRQ vector
 		int level = m_i8214[1]->a_r() ^ 7;
-		m_irq_address[CPU_2][0] = m_cpu2space->read_byte(0xffe0 + level*2);
-		m_irq_address[CPU_2][1] = m_cpu2space->read_byte(0xffe0 + level*2 + 1);
-
-		m_m6809_bs_hack_cnt[CPU_2] = 2;
-
-		//osd_printf_debug("cpu1 interrupt, will be pushing address %02x%02x\n", m_irq_address[CPU_2][0], m_irq_address[CPU_2][1]);
+		u8 irq_address = m_cpu2space->read_byte(0xffe0 + level*2 + BIT(offset, 0));
+		LOG("%s: CPU2 IRQ vector %s byte: %02x\n", machine().describe_context(), BIT(offset, 0) ? "low" : "high", irq_address);
+		return irq_address;
 	}
-	return 0;
+	else if ((offset & 0x000e) == 0x000e)
+	{
+		// RESET vector
+		return m_q133_rom[offset & 0xbff];
+	}
+	else
+	{
+		LOG("%s: Some other CPU2 interrupt, fetching vector from $%04x\n", machine().describe_context(), offset);
+		return m_scratch_ram[CPU_2][offset & 0xff];
+	}
 }
 
 void cmi_state::set_interrupt(int cpunum, int level, int state)
@@ -1793,13 +1747,13 @@ void cmi_state::set_interrupt(int cpunum, int level, int state)
 	}
 }
 
-WRITE_LINE_MEMBER( cmi_state::maincpu2_irq0_w )
+void cmi_state::maincpu2_irq0_w(int state)
 {
 	LOG("%s: maincpu2_irq0_w: %d\n", machine().describe_context(), state);
 	set_interrupt(CPU_2, 0 ^ 7, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER( cmi_state::i8214_1_int_w )
+void cmi_state::i8214_1_int_w(int state)
 {
 	LOG("%s: i8214_1_int_w %d%s\n", machine().describe_context(), state, state ? ", setting IRQ merger bit 0" : "");
 	if (state)
@@ -1810,14 +1764,14 @@ WRITE_LINE_MEMBER( cmi_state::i8214_1_int_w )
 	}
 }
 
-WRITE_LINE_MEMBER( cmi_state::i8214_2_int_w )
+void cmi_state::i8214_2_int_w(int state)
 {
 	LOG("%s: i8214_2_int_w: %d\n", machine().describe_context(), state);
 	if (state)
 		m_maincpu2->set_input_line(M6809_IRQ_LINE, ASSERT_LINE);
 }
 
-WRITE_LINE_MEMBER( cmi_state::i8214_3_int_w )
+void cmi_state::i8214_3_int_w(int state)
 {
 	LOG("%s: i8214_3_int_w %d%s\n", machine().describe_context(), state, state ? ", setting IRQ merger bit 1" : "");
 	if (state)
@@ -1831,18 +1785,18 @@ WRITE_LINE_MEMBER( cmi_state::i8214_3_int_w )
 }
 
 
-WRITE_LINE_MEMBER( cmi_state::i8214_3_enlg )
+void cmi_state::i8214_3_enlg(int state)
 {
 	// Not needed?
 //  m_hp_int = state;
 }
 
-WRITE_LINE_MEMBER( cmi_state::pia_q219_irqa )
+void cmi_state::pia_q219_irqa(int state)
 {
 	set_interrupt(CPU_2, IRQ_TOUCHINT_LEVEL, state);
 }
 
-WRITE_LINE_MEMBER( cmi_state::pia_q219_irqb )
+void cmi_state::pia_q219_irqb(int state)
 {
 	set_interrupt(CPU_2, IRQ_PENINT_LEVEL, state);
 }
@@ -1896,18 +1850,18 @@ void cmi_state::q133_1_portb_w(u8 data)
 //static int kbd_to_cmi;
 //static int cmi_to_kbd;
 
-WRITE_LINE_MEMBER( cmi_state::q133_acia_clock )
+void cmi_state::q133_acia_clock(int state)
 {
 	for (auto &acia : m_q133_acia)
 		acia->write_rxc(state);
 }
 
-WRITE_LINE_MEMBER( cmi_state::msm5832_irq_w )
+void cmi_state::msm5832_irq_w(int state)
 {
 	set_interrupt(CPU_2, IRQ_RTCINT_LEVEL, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
-WRITE_LINE_MEMBER( cmi_state::cmi07_irq )
+void cmi_state::cmi07_irq(int state)
 {
 	m_cmi07cpu->set_input_line(INPUT_LINE_IRQ0, state ? ASSERT_LINE : CLEAR_LINE);
 }
@@ -1934,13 +1888,8 @@ void cmi_state::machine_reset()
 
 	for (int cpunum = 0; cpunum < 2; ++cpunum)
 	{
-		address_space *space = (cpunum == CPU_1 ? m_cpu1space : m_cpu2space);
-
 		/* Select A (system) spaces */
 		m_cpu_active_space[cpunum] = MAPPING_A;
-
-		m_irq_address[cpunum][0] = space->read_byte(0xfff8);
-		m_irq_address[cpunum][1] = space->read_byte(0xfff9);
 	}
 
 	// TODO - we need to detect empty disk drive!!
@@ -1961,8 +1910,6 @@ void cmi_state::machine_reset()
 	m_cmi02_ptm->set_g1(0);
 	m_cmi02_ptm->set_g2(0);
 	m_cmi02_ptm->set_g3(0);
-	m_m6809_bs_hack_cnt[0] = 0;
-	m_m6809_bs_hack_cnt[1] = 0;
 
 	//m_midi_ptm[0]->set_g1(1); // /G1 has unknown source, "TIMER 1A /GATE" per schematic
 	m_midi_ptm[0]->set_g2(0); // /G2 and /G3 wired to ground per schematic
@@ -2018,7 +1965,7 @@ void cmi_state::machine_start()
 	m_msm5832->cs_w(1);
 }
 
-WRITE_LINE_MEMBER( cmi_state::cmi_iix_vblank )
+void cmi_state::cmi_iix_vblank(int state)
 {
 	if (state)
 	{
@@ -2041,17 +1988,27 @@ void cmi_state::cmi2x(machine_config &config)
 {
 	MC6809E(config, m_maincpu1, Q209_CPU_CLOCK);
 	m_maincpu1->set_addrmap(AS_PROGRAM, &cmi_state::maincpu1_map);
-	m_maincpu1->set_irq_acknowledge_callback(FUNC(cmi_state::cpu1_interrupt_callback));
+	m_maincpu1->interrupt_vector_read().set(FUNC(cmi_state::vfetch1_r));
 
 	MC6809E(config, m_maincpu2, Q209_CPU_CLOCK);
 	m_maincpu2->set_addrmap(AS_PROGRAM, &cmi_state::maincpu2_map);
-	m_maincpu2->set_irq_acknowledge_callback(FUNC(cmi_state::cpu2_interrupt_callback));
+	m_maincpu2->interrupt_vector_read().set(FUNC(cmi_state::vfetch2_r));
 
 	ADDRESS_MAP_BANK(config, m_cpu_periphs[0]).set_options(ENDIANNESS_BIG, 8, 16, 0x1000);
 	m_cpu_periphs[0]->set_addrmap(AS_PROGRAM, &cmi_state::cpu_periphs_map<0>);
 
 	ADDRESS_MAP_BANK(config, m_cpu_periphs[1]).set_options(ENDIANNESS_BIG, 8, 16, 0x1000);
 	m_cpu_periphs[1]->set_addrmap(AS_PROGRAM, &cmi_state::cpu_periphs_map<1>);
+
+	ls259_device &cpulatch(LS259(config, "cpulatch")); // 6D (Q209)
+	cpulatch.q_out_cb<0>().set(FUNC(cmi_state::ipi_w<0>));
+	cpulatch.q_out_cb<1>().set(FUNC(cmi_state::ipi_w<1>));
+	cpulatch.q_out_cb<2>().set(FUNC(cmi_state::nmi_reset_w<0>));
+	cpulatch.q_out_cb<3>().set(FUNC(cmi_state::nmi_reset_w<1>));
+	cpulatch.q_out_cb<4>().set(FUNC(cmi_state::ms_w<0>));
+	cpulatch.q_out_cb<5>().set(FUNC(cmi_state::ms_w<1>));
+	cpulatch.q_out_cb<6>().set_inputline(m_maincpu1, M6809_FIRQ_LINE);
+	cpulatch.q_out_cb<7>().set_inputline(m_maincpu2, M6809_FIRQ_LINE);
 
 	M68000(config, m_midicpu, 20_MHz_XTAL / 2);
 	m_midicpu->set_addrmap(AS_PROGRAM, &cmi_state::midicpu_map);
@@ -2202,8 +2159,8 @@ void cmi_state::cmi2x(machine_config &config)
 	FD1791(config, m_wd1791, 16_MHz_XTAL / 8); // wd1791_interface
 	m_wd1791->intrq_wr_callback().set(FUNC(cmi_state::wd1791_irq));
 	m_wd1791->drq_wr_callback().set(FUNC(cmi_state::wd1791_drq));
-	FLOPPY_CONNECTOR(config, "wd1791:0", cmi2x_floppies, "8dsdd", floppy_image_device::default_mfm_floppy_formats);
-	FLOPPY_CONNECTOR(config, "wd1791:1", cmi2x_floppies, "8dsdd", floppy_image_device::default_mfm_floppy_formats);
+	FLOPPY_CONNECTOR(config, m_floppy[0], cmi2x_floppies, "8dsdd", floppy_image_device::default_mfm_floppy_formats);
+	FLOPPY_CONNECTOR(config, m_floppy[1], cmi2x_floppies, "8dsdd", floppy_image_device::default_mfm_floppy_formats);
 
 	SPEAKER(config, "mono").front_center();
 
@@ -2273,5 +2230,8 @@ ROM_END
 void cmi_state::init_cmi2x()
 {
 }
+
+} // anonymous namespace
+
 
 CONS( 1983, cmi2x, 0, 0, cmi2x, cmi2x, cmi_state, init_cmi2x, "Fairlight", "CMI IIx", MACHINE_NOT_WORKING | MACHINE_NO_SOUND )

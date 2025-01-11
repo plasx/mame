@@ -18,7 +18,7 @@
 #include "k053251.h"
 #include "konami_helper.h"
 
-#include "cpu/m6809/konami.h" // for the callback and the FIRQ IRQ definition
+#include "cpu/m6809/konami.h"
 #include "machine/bankdev.h"
 #include "machine/watchdog.h"
 #include "sound/ymopm.h"
@@ -47,8 +47,8 @@ public:
 	void surpratk(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	// video-related
@@ -73,12 +73,10 @@ private:
 	K05324X_CB_MEMBER(sprite_callback);
 	K052109_CB_MEMBER(tile_callback);
 	void banking_callback(uint8_t data);
-	void bank0000_map(address_map &map);
-	void main_map(address_map &map);
+	void bank0000_map(address_map &map) ATTR_COLD;
+	void main_map(address_map &map) ATTR_COLD;
 };
 
-
-// video
 
 /***************************************************************************
 
@@ -123,22 +121,29 @@ K05324X_CB_MEMBER(surpratk_state::sprite_callback)
 
 uint32_t surpratk_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
+	// update color info and refresh tilemaps
+	static const int K053251_CI[3] = { k053251_device::CI2, k053251_device::CI4, k053251_device::CI3 };
 	int bg_colorbase = m_k053251->get_palette_index(k053251_device::CI0);
 	m_sprite_colorbase = m_k053251->get_palette_index(k053251_device::CI1);
-	m_layer_colorbase[0] = m_k053251->get_palette_index(k053251_device::CI2);
-	m_layer_colorbase[1] = m_k053251->get_palette_index(k053251_device::CI4);
-	m_layer_colorbase[2] = m_k053251->get_palette_index(k053251_device::CI3);
+
+	for (int i = 0; i < 3; i++)
+	{
+		int prev_colorbase = m_layer_colorbase[i];
+		m_layer_colorbase[i] = m_k053251->get_palette_index(K053251_CI[i]);
+
+		if (m_layer_colorbase[i] != prev_colorbase)
+			m_k052109->mark_tilemap_dirty(i);
+	}
 
 	m_k052109->tilemap_update();
 
+	// sort layers and draw
 	int layer[3];
-
-	layer[0] = 0;
-	m_layerpri[0] = m_k053251->get_priority(k053251_device::CI2);
-	layer[1] = 1;
-	m_layerpri[1] = m_k053251->get_priority(k053251_device::CI4);
-	layer[2] = 2;
-	m_layerpri[2] = m_k053251->get_priority(k053251_device::CI3);
+	for (int i = 0; i < 3; i++)
+	{
+		layer[i] = i;
+		m_layerpri[i] = m_k053251->get_priority(K053251_CI[i]);
+	}
 
 	konami_sortlayers3(layer, m_layerpri);
 
@@ -152,8 +157,6 @@ uint32_t surpratk_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 	return 0;
 }
 
-
-// machine
 
 void surpratk_state::videobank_w(uint8_t data)
 {
@@ -300,7 +303,7 @@ void surpratk_state::banking_callback(uint8_t data)
 void surpratk_state::surpratk(machine_config &config)
 {
 	// basic machine hardware
-	KONAMI(config, m_maincpu, XTAL(24'000'000) / 2 / 4); // 053248, the clock input is 12MHz, and internal CPU divider of 4
+	KONAMI(config, m_maincpu, XTAL(24'000'000) / 2); // 053248, the clock input is 12MHz, and internal CPU divider of 4
 	m_maincpu->set_addrmap(AS_PROGRAM, &surpratk_state::main_map);
 	m_maincpu->line().set(FUNC(surpratk_state::banking_callback));
 

@@ -14,6 +14,9 @@
 //#include "machine/upd7261.h"
 #include "machine/wd_fdc.h"
 
+
+namespace {
+
 class att3b2_state : public driver_device
 {
 public:
@@ -27,8 +30,8 @@ public:
 	void att3b2v3(machine_config &config);
 
 private:
-	void mem_map_300(address_map &map);
-	void mem_map_600(address_map &map);
+	void mem_map_300(address_map &map) ATTR_COLD;
+	void mem_map_600(address_map &map) ATTR_COLD;
 
 	required_device<we32100_device> m_maincpu;
 };
@@ -130,7 +133,10 @@ ROM_START(3b2_600)
 	ROM_LOAD32_BYTE("abtrt.bin", 0x0003, 0x8000, CRC(0f075161) SHA1(b67c9c4549dc789df33b5a38e4b35fe26fdfbea6))
 ROM_END
 
-COMP(1984, 3b2_300, 0,       0, att3b2v2, att3b2, att3b2_state, empty_init, "AT&T", "3B2/300", MACHINE_IS_SKELETON)
-COMP(1985, 3b2_310, 3b2_300, 0, att3b2v2, att3b2, att3b2_state, empty_init, "AT&T", "3B2/310", MACHINE_IS_SKELETON)
-COMP(1985, 3b2_400, 3b2_300, 0, att3b2v2, att3b2, att3b2_state, empty_init, "AT&T", "3B2/400", MACHINE_IS_SKELETON)
-COMP(1987, 3b2_600, 0,       0, att3b2v3, att3b2, att3b2_state, empty_init, "AT&T", "3B2/600", MACHINE_IS_SKELETON)
+} // anonymous namespace
+
+
+COMP(1984, 3b2_300, 0,       0, att3b2v2, att3b2, att3b2_state, empty_init, "AT&T", "3B2/300", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP(1985, 3b2_310, 3b2_300, 0, att3b2v2, att3b2, att3b2_state, empty_init, "AT&T", "3B2/310", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP(1985, 3b2_400, 3b2_300, 0, att3b2v2, att3b2, att3b2_state, empty_init, "AT&T", "3B2/400", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP(1987, 3b2_600, 0,       0, att3b2v3, att3b2, att3b2_state, empty_init, "AT&T", "3B2/600", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

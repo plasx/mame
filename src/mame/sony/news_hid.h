@@ -1,8 +1,8 @@
 // license:BSD-3-Clause
 // copyright-holders:Patrick Mackinlay
 
-#ifndef MAME_MACHINE_NEWS_HID_H
-#define MAME_MACHINE_NEWS_HID_H
+#ifndef MAME_SONY_NEWS_HID_H
+#define MAME_SONY_NEWS_HID_H
 
 #pragma once
 
@@ -22,15 +22,15 @@ public:
 	};
 	template <news_hid_device Device> auto irq_out() { return m_irq_out_cb[Device].bind(); }
 
-	void map(address_map &map);
-	void map_68k(address_map &map);
-	void map_apbus(address_map &map);
+	void map(address_map &map) ATTR_COLD;
+	void map_68k(address_map &map) ATTR_COLD;
+	void map_apbus(address_map &map) ATTR_COLD;
 
 protected:
 	// device_t overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
-	virtual ioport_constructor device_input_ports() const override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
 	// device_matrix_keyboard_interface overrides
 	virtual void key_make(u8 row, u8 column) override;
@@ -68,4 +68,4 @@ private:
 
 DECLARE_DEVICE_TYPE(NEWS_HID_HLE, news_hid_hle_device)
 
-#endif // MAME_MACHINE_NEWS_HID_H
+#endif // MAME_SONY_NEWS_HID_H

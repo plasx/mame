@@ -95,9 +95,6 @@ void stepper_device::update_optic()
 
 void stepper_device::device_start()
 {
-	/* resolve callbacks */
-	m_optic_cb.resolve_safe();
-
 	/* register for state saving */
 	save_item(NAME(m_index_start));
 	save_item(NAME(m_index_end));
@@ -189,7 +186,7 @@ void stepper_device::advance_phase()
 {
 	//Standard drive table is 2,6,4,5,1,9,8,a
 	//NOTE: This runs through the stator patterns in such a way as to drive the reel forward (downwards from the player's view, clockwise on our rose)
-	//The Heber 'Pluto' controller runs this in reverse
+	//The Heber 'Pluto' controller runs this in reverse, this needs checking on real hardware
 	switch (m_pattern)
 	{             //Black  Blue  Red  Yellow
 		case 0x02://  0     0     1     0
@@ -257,7 +254,8 @@ void reel_device::advance_phase()
 		case STARPOINT_48STEP_REEL : /* STARPOINT RMxxx */
 		case GAMESMAN_200STEP_REEL : /* Gamesman GMxxxx */
 		case STARPOINT_144STEP_DICE :/* STARPOINT 1DCU DICE mechanism */
-		case STARPOINT_200STEP_REEL :/* STARPOINT 1DCU DICE mechanism */
+		case STARPOINT_200STEP_REEL :
+		case SYS5_100STEP_REEL :
 		stepper_device::advance_phase();
 		break;
 
@@ -327,7 +325,6 @@ void reel_device::advance_phase()
 		case MPU3_48STEP_REEL :
 		/* The MPU3 harness is actually the same as the MPU4 setup, but with two active lines instead of four, and a slight change to the windings.
 		   Inverters are used so if a pin is low, the higher bit of the pair is activated, and if high the lower bit is activated.
-		   The stepper driven MPU2 should use this hardware as well.
 		*/
 		switch (m_pattern)
 		{

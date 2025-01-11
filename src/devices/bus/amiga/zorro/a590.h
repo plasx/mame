@@ -24,17 +24,12 @@ namespace bus::amiga::zorro {
 //  TYPE DEFINITIONS
 //**************************************************************************
 
-// ======================> dmac_hdc_device_base
-
 class dmac_hdc_device_base : public device_t
 {
 protected:
-	// construction/destruction
 	dmac_hdc_device_base(const machine_config &mconfig, device_type type, const char *tag, device_t *owner, uint32_t clock);
 
-	// device-level overrides
 	virtual void device_start() override ATTR_COLD;
-	virtual void device_reset() override;
 
 	// optional information overrides
 	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
@@ -60,27 +55,22 @@ protected:
 private:
 	uint8_t dmac_scsi_r(offs_t offset);
 	void dmac_scsi_w(offs_t offset, uint8_t data);
-	DECLARE_WRITE_LINE_MEMBER( dmac_int_w );
-	DECLARE_WRITE_LINE_MEMBER( dmac_cfgout_w ) { cfgout_w(state); }
-	DECLARE_WRITE_LINE_MEMBER( scsi_irq_w );
-	DECLARE_WRITE_LINE_MEMBER( scsi_drq_w );
+	void dmac_int_w(int state);
+	void dmac_cfgout_w(int state) { cfgout_w(state); }
+	void scsi_irq_w(int state);
+	void scsi_drq_w(int state);
 
 	static void scsi_devices(device_slot_interface &device) ATTR_COLD;
 	void wd33c93(device_t *device);
 };
 
-// ======================> a590_device
-
 class a590_device : public dmac_hdc_device_base, public device_exp_card_interface
 {
 public:
-	// construction/destruction
 	a590_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	// device-level overrides
 	virtual void device_start() override ATTR_COLD;
-	virtual void device_reset() override;
 
 	// optional information overrides
 	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
@@ -91,7 +81,7 @@ protected:
 	virtual void int6_w(int state) override { m_slot->int6_w(state); }
 
 	// input from slot
-	virtual DECLARE_WRITE_LINE_MEMBER( cfgin_w ) override;
+	virtual void cfgin_w(int state) override;
 
 private:
 	required_ioport m_dips;
@@ -100,18 +90,13 @@ private:
 	required_ioport m_jp4;
 };
 
-// ======================> a2091_device
-
 class a2091_device : public dmac_hdc_device_base, public device_zorro2_card_interface
 {
 public:
-	// construction/destruction
 	a2091_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock);
 
 protected:
-	// device-level overrides
 	virtual void device_start() override ATTR_COLD;
-	virtual void device_reset() override;
 
 	// optional information overrides
 	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
@@ -122,7 +107,7 @@ protected:
 	virtual void int6_w(int state) override { m_slot->int6_w(state); }
 
 	// input from slot
-	virtual DECLARE_WRITE_LINE_MEMBER( cfgin_w ) override;
+	virtual void cfgin_w(int state) override;
 
 private:
 	required_ioport m_jp1;
@@ -134,7 +119,7 @@ private:
 
 } // namespace bus::amiga::zorro
 
-// device type definition
+// device type declaration
 DECLARE_DEVICE_TYPE_NS(ZORRO_A590,  bus::amiga::zorro, a590_device)
 DECLARE_DEVICE_TYPE_NS(ZORRO_A2091, bus::amiga::zorro, a2091_device)
 

@@ -13,6 +13,8 @@
 #include "screen.h"
 
 
+namespace {
+
 class segapm_state : public driver_device
 {
 public:
@@ -24,10 +26,10 @@ public:
 	void segapm(machine_config &config);
 
 private:
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 	uint32_t screen_update_segapm(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	required_device<cpu_device> m_maincpu;
-	void segapm_map(address_map &map);
+	void segapm_map(address_map &map) ATTR_COLD;
 };
 
 
@@ -84,6 +86,9 @@ ROM_START( segapm ) // was more than one cartridge available? if so softlist the
 
 	// todo, sh2 bios roms etc.
 ROM_END
+
+} // anonymous namespace
+
 
 //    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT   CLASS         INIT        COMPANY  FULLNAME         FLAGS
 CONS( 1996, segapm, 0,      0,      segapm,  segapm, segapm_state, empty_init, "Sega",  "Picture Magic", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

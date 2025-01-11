@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Olivier Galibert
-#ifndef MAME_MACHINE_MAPLEDEV_H
-#define MAME_MACHINE_MAPLEDEV_H
+#ifndef MAME_SEGA_MAPLEDEV_H
+#define MAME_SEGA_MAPLEDEV_H
 
 
 #include "maple-dc.h"
@@ -23,7 +23,7 @@ protected:
 	uint32_t reply_buffer[256]{};
 
 	// device-level overrides
-	virtual void device_start() override;
+	virtual void device_start() override ATTR_COLD;
 
 	TIMER_CALLBACK_MEMBER(reply_ready);
 	void reply_ready_with_delay();
@@ -43,4 +43,4 @@ private:
 	emu_timer *timer = nullptr;
 };
 
-#endif // MAME_MACHINE_MAPLEDEV_H
+#endif // MAME_SEGA_MAPLEDEV_H

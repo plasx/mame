@@ -29,6 +29,8 @@ The asp ctc needs at least 2 triggers. The purpose of the zve pio is unknown.
 #include "machine/z80sio.h"
 
 
+namespace {
+
 class mc8030_state : public driver_device
 {
 public:
@@ -51,11 +53,11 @@ private:
 	uint8_t asp_port_b_r();
 	void asp_port_a_w(uint8_t data);
 	void asp_port_b_w(uint8_t data);
-	void machine_start() override;
+	void machine_start() override ATTR_COLD;
 	uint32_t screen_update_mc8030(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	std::unique_ptr<u8[]> m_vram;
 	required_device<z80_device> m_maincpu;
@@ -289,6 +291,9 @@ ROM_START( mc8030 )
 	ROM_LOAD( "spe_1a.rom",    0x2000, 0x000800, CRC(37c71c68) SHA1(951650698b00f65facf5ccfbd8dd13628a93425d) )
 	ROM_LOAD( "spe_2a.rom",    0x2800, 0x000400, CRC(9ec8f287) SHA1(cdf5a9583d898814ba480ffbc8d906a642c6dc81) )
 ROM_END
+
+} // anonymous namespace
+
 
 /* Driver */
 

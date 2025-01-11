@@ -9,7 +9,9 @@
 /*
 
     TODO:
-
+    - Problem with DMA: open MAME debugger to see RAM, set LOAD, input a value,
+      and it will write twice. It is because set_input_line is delayed until
+      the CPU finished execute_run after sc_w.
     - proper layout
 
 */
@@ -92,9 +94,9 @@ void elf2_state::elf2_io(address_map &map)
 
 /* Input Ports */
 
-INPUT_CHANGED_MEMBER( elf2_state::input_w )
+INPUT_CHANGED_MEMBER(elf2_state::input_w)
 {
-	if (newval)
+	if (newval && ~m_sc & 2)
 	{
 		/* assert DMAIN */
 		m_maincpu->set_input_line(COSMAC_INPUT_LINE_DMAIN, ASSERT_LINE);
@@ -134,29 +136,24 @@ static INPUT_PORTS_START( elf2 )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RUN") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("LOAD") PORT_CODE(KEYCODE_L) PORT_TOGGLE
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("M/P") PORT_CODE(KEYCODE_M) PORT_TOGGLE
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("INPUT") PORT_CODE(KEYCODE_ENTER) PORT_CHANGED_MEMBER(DEVICE_SELF, elf2_state, input_w, 0)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("INPUT") PORT_CODE(KEYCODE_ENTER) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(elf2_state::input_w), 0)
 INPUT_PORTS_END
 
 /* CDP1802 Configuration */
 
-READ_LINE_MEMBER( elf2_state::wait_r )
+int elf2_state::wait_r()
 {
-	return LOAD;
+	return !LOAD;
 }
 
-READ_LINE_MEMBER( elf2_state::clear_r )
+int elf2_state::clear_r()
 {
 	return RUN;
 }
 
-READ_LINE_MEMBER( elf2_state::ef4_r )
+int elf2_state::ef4_r()
 {
 	return INPUT;
-}
-
-WRITE_LINE_MEMBER( elf2_state::q_w )
-{
-	m_led = state ? 1 : 0;
 }
 
 uint8_t elf2_state::dma_r()
@@ -166,22 +163,16 @@ uint8_t elf2_state::dma_r()
 
 void elf2_state::sc_w(uint8_t data)
 {
-	switch (data)
-	{
-	case COSMAC_STATE_CODE_S2_DMA:
-	case COSMAC_STATE_CODE_S3_INTERRUPT:
-		/* clear DMAIN */
+	/* DMAIN is reset while SC1 is high */
+	if (data & 2)
 		m_maincpu->set_input_line(COSMAC_INPUT_LINE_DMAIN, CLEAR_LINE);
-		break;
 
-	default:
-		break;
-	}
+	m_sc = data;
 }
 
 /* MM74C923 Interface */
 
-WRITE_LINE_MEMBER( elf2_state::da_w )
+void elf2_state::da_w(int state)
 {
 	if (state)
 	{
@@ -204,35 +195,29 @@ void elf2_state::machine_start()
 {
 	address_space &program = m_maincpu->space(AS_PROGRAM);
 
-	m_led.resolve();
-
-	/* initialize LED displays */
-	m_7segs.resolve();
-	m_led_l->rbi_w(1);
-	m_led_h->rbi_w(1);
-
 	/* setup memory banking */
 	program.install_rom(0x0000, 0x00ff, m_ram->pointer());
 	program.install_write_handler(0x0000, 0x00ff, write8sm_delegate(*this, FUNC(elf2_state::memory_w)));
 
 	/* register for state saving */
 	save_item(NAME(m_data));
+	save_item(NAME(m_sc));
 }
 
 /* Machine Driver */
 
 QUICKLOAD_LOAD_MEMBER(elf2_state::quickload_cb)
 {
-	int size = image.length();
+	int const size = image.length();
 
 	if (size > m_ram->size())
 	{
-		return image_init_result::FAIL;
+		return std::make_pair(image_error::INVALIDLENGTH, std::string());
 	}
 
 	image.fread(m_ram->pointer(), size);
 
-	return image_init_result::PASS;
+	return std::make_pair(std::error_condition(), std::string());
 }
 
 void elf2_state::elf2(machine_config &config)
@@ -244,7 +229,7 @@ void elf2_state::elf2(machine_config &config)
 	m_maincpu->wait_cb().set(FUNC(elf2_state::wait_r));
 	m_maincpu->clear_cb().set(FUNC(elf2_state::clear_r));
 	m_maincpu->ef4_cb().set(FUNC(elf2_state::ef4_r));
-	m_maincpu->q_cb().set(FUNC(elf2_state::q_w));
+	m_maincpu->q_cb().set_output("led0");
 	m_maincpu->dma_rd_cb().set(FUNC(elf2_state::dma_r));
 	m_maincpu->dma_wr_cb().set(m_vdc, FUNC(cdp1861_device::dma_w));
 	m_maincpu->sc_cb().set(FUNC(elf2_state::sc_w));
@@ -254,7 +239,7 @@ void elf2_state::elf2(machine_config &config)
 
 	CDP1861(config, m_vdc, XTAL(3'579'545)/2).set_screen(SCREEN_TAG);
 	m_vdc->int_cb().set_inputline(m_maincpu, COSMAC_INPUT_LINE_INT);
-	m_vdc->dma_out_cb().set_inputline(m_maincpu,  COSMAC_INPUT_LINE_DMAOUT);
+	m_vdc->dma_out_cb().set_inputline(m_maincpu, COSMAC_INPUT_LINE_DMAOUT);
 	m_vdc->efx_cb().set_inputline(m_maincpu, COSMAC_INPUT_LINE_EF1);
 	SCREEN(config, SCREEN_TAG, SCREEN_TYPE_RASTER);
 
@@ -268,8 +253,8 @@ void elf2_state::elf2(machine_config &config)
 	m_kb->x3_rd_callback().set_ioport("X3");
 	m_kb->x4_rd_callback().set_ioport("X4");
 
-	DM9368(config, m_led_h, 0).update_cb().set(FUNC(elf2_state::digit_w<0>));
-	DM9368(config, m_led_l, 0).update_cb().set(FUNC(elf2_state::digit_w<1>));
+	DM9368(config, m_led_h).update_cb().set_output("digit0");
+	DM9368(config, m_led_l).update_cb().set_output("digit1");
 
 	SPEAKER(config, "mono").front_center();
 
@@ -292,4 +277,4 @@ ROM_END
 /* System Drivers */
 
 //    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  CLASS       INIT        COMPANY      FULLNAME  FLAGS
-COMP( 1978, elf2, 0,      0,      elf2,    elf2,  elf2_state, empty_init, "Netronics", "Elf II", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND)
+COMP( 1978, elf2, 0,      0,      elf2,    elf2,  elf2_state, empty_init, "Netronics", "Elf II", MACHINE_SUPPORTS_SAVE | MACHINE_NO_SOUND_HW )

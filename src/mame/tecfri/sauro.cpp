@@ -15,8 +15,8 @@ Memory mapped:
 0000-dfff   ROM
 e000-e7ff   RAM, battery backed
 e800-ebff   Sprite RAM
-f000-fbff   Background Video RAM
-f400-ffff   Background Color RAM
+f000-f3ff   Background Video RAM
+f400-f7ff   Background Color RAM
 f800-fbff   Foreground Video RAM
 fc00-ffff   Foreground Color RAM
 
@@ -63,10 +63,12 @@ TODO
 
 - What do the rest of the ports in the range c0-ce do?
 
+
 Tricky Doc
 ----------
 
 Addition by Reip
+Applause by hap
 
 
 Stephh's notes (based on the games Z80 code and some tests) :
@@ -155,7 +157,7 @@ public:
 	void tecfri(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_device<gfxdecode_device> m_gfxdecode;
@@ -167,15 +169,13 @@ protected:
 	required_shared_ptr<uint8_t> m_bg_colorram;
 
 	tilemap_t *m_bg_tilemap = nullptr;
-	uint8_t m_palette_bank = 0U;
-
+	uint8_t m_palette_bank = 0;
 	bool m_irq_enable = 0;
 
 	// common
-	DECLARE_WRITE_LINE_MEMBER(vblank_irq);
-	DECLARE_WRITE_LINE_MEMBER(irq_reset_w);
-	template <uint8_t Which> DECLARE_WRITE_LINE_MEMBER(coin_w);
-	DECLARE_WRITE_LINE_MEMBER(flip_screen_w);
+	void vblank_irq(int state);
+	void irq_reset_w(int state);
+	template <uint8_t Which> void coin_w(int state);
 	void bg_videoram_w(offs_t offset, uint8_t data);
 	void bg_colorram_w(offs_t offset, uint8_t data);
 	void scroll_bg_w(uint8_t data);
@@ -193,13 +193,13 @@ public:
 	void trckydoc(machine_config &config);
 
 protected:
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void prg_map(address_map &map);
+	void prg_map(address_map &map) ATTR_COLD;
 };
 
 class sauro_state : public base_state
@@ -216,7 +216,7 @@ public:
 	void saurobl(machine_config &config);
 
 protected:
-	virtual void video_start() override;
+	virtual void video_start() override ATTR_COLD;
 
 private:
 	required_device<generic_latch_8_device> m_soundlatch;
@@ -228,8 +228,8 @@ private:
 
 	void sound_command_w(uint8_t data);
 	uint8_t sound_command_r();
-	DECLARE_WRITE_LINE_MEMBER(palette_bank0_w);
-	DECLARE_WRITE_LINE_MEMBER(palette_bank1_w);
+	void palette_bank0_w(int state);
+	void palette_bank1_w(int state);
 	void scroll_fg_w(uint8_t data);
 	void fg_videoram_w(offs_t offset, uint8_t data);
 	void fg_colorram_w(offs_t offset, uint8_t data);
@@ -239,14 +239,12 @@ private:
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect);
 
-	void main_io_map(address_map &map);
-	void main_prg_map(address_map &map);
-	void sauro_sound_map(address_map &map);
-	void saurobl_sound_map(address_map &map);
+	void main_io_map(address_map &map) ATTR_COLD;
+	void main_prg_map(address_map &map) ATTR_COLD;
+	void sauro_sound_map(address_map &map) ATTR_COLD;
+	void saurobl_sound_map(address_map &map) ATTR_COLD;
 };
 
-
-// video
 
 // General
 
@@ -302,7 +300,7 @@ TILE_GET_INFO_MEMBER(sauro_state::get_tile_info_fg)
 static const int scroll2_map[8] = {2, 1, 4, 3, 6, 5, 0, 7};
 static const int scroll2_map_flip[8] = {0, 7, 2, 1, 4, 3, 6, 5};
 
-WRITE_LINE_MEMBER(sauro_state::palette_bank0_w)
+void sauro_state::palette_bank0_w(int state)
 {
 	if (state)
 		m_palette_bank |= 0x10;
@@ -311,7 +309,7 @@ WRITE_LINE_MEMBER(sauro_state::palette_bank0_w)
 	machine().tilemap().mark_all_dirty();
 }
 
-WRITE_LINE_MEMBER(sauro_state::palette_bank1_w)
+void sauro_state::palette_bank1_w(int state)
 {
 	if (state)
 		m_palette_bank |= 0x20;
@@ -330,14 +328,10 @@ void sauro_state::scroll_fg_w(uint8_t data)
 
 void sauro_state::video_start()
 {
-	m_bg_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(sauro_state::get_tile_info_bg)), TILEMAP_SCAN_COLS,
-			8, 8, 32, 32);
-
-	m_fg_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(sauro_state::get_tile_info_fg)), TILEMAP_SCAN_COLS,
-			8, 8, 32, 32);
+	m_bg_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(sauro_state::get_tile_info_bg)), TILEMAP_SCAN_COLS, 8, 8, 32, 32);
+	m_fg_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(sauro_state::get_tile_info_fg)), TILEMAP_SCAN_COLS, 8, 8, 32, 32);
 
 	m_fg_tilemap->set_transparent_pen(0);
-	m_palette_bank = 0;
 
 	save_item(NAME(m_palette_bank));
 }
@@ -346,10 +340,12 @@ void sauro_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	int const flipy = flip_screen();
 
+	// Weird, sprites entries don't start on DWORD boundary
 	for (int offs = 3; offs < m_spriteram.bytes() - 1; offs += 4)
 	{
 		int sy = m_spriteram[offs];
-		if (sy == 0xf8) continue;
+		if (sy == 0xf8)
+			continue;
 
 		int const code = m_spriteram[offs + 1] + ((m_spriteram[offs + 3] & 0x03) << 8);
 		int sx = m_spriteram[offs + 2];
@@ -362,12 +358,13 @@ void sauro_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 			if (sx > 0xc0)
 			{
 				// Sign extend
-				sx = (signed int)(signed char)sx;
+				sx = int8_t(sx);
 			}
 		}
 		else
 		{
-			if (sx < 0x40) continue;
+			if (sx < 0x40)
+				continue;
 		}
 
 		int flipx = m_spriteram[offs + 3] & 0x04;
@@ -375,7 +372,7 @@ void sauro_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 		if (flipy)
 		{
 			flipx = !flipx;
-			sx = (235 - sx) & 0xff;  // The &0xff is not 100% percent correct
+			sx = (235 - sx) & 0xff; // The & 0xff is not 100% correct
 			sy = 240 - sy;
 		}
 
@@ -399,29 +396,16 @@ uint32_t sauro_state::screen_update(screen_device &screen, bitmap_ind16 &bitmap,
 
 void trckydoc_state::video_start()
 {
-	m_bg_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(trckydoc_state::get_tile_info_bg)), TILEMAP_SCAN_COLS,
-			8, 8, 32, 32);
-
-	m_palette_bank = 0;
+	m_bg_tilemap = &machine().tilemap().create(*m_gfxdecode, tilemap_get_info_delegate(*this, FUNC(trckydoc_state::get_tile_info_bg)), TILEMAP_SCAN_COLS, 8, 8, 32, 32);
 }
 
 void trckydoc_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
-	int const flipy = flip_screen();
-
 	// Weird, sprites entries don't start on DWORD boundary
 	for (int offs = 3; offs < m_spriteram.bytes() - 1; offs += 4)
 	{
 		int sy = m_spriteram[offs];
-
-		if (m_spriteram[offs + 3] & 0x08)
-		{
-			// needed by the elevator cable (2nd stage), balls bouncing (3rd stage) and maybe other things
-			sy += 6;
-		}
-
 		int const code = m_spriteram[offs + 1] + ((m_spriteram[offs + 3] & 0x01) << 8);
-
 		int sx = m_spriteram[offs + 2] - 2;
 		int const color = (m_spriteram[offs + 3] >> 4) & 0x0f;
 
@@ -433,20 +417,23 @@ void trckydoc_state::draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprec
 			if (sx > 0xc0)
 			{
 				// Sign extend
-				sx = (signed int)(signed char)sx;
+				sx = int8_t(sx);
 			}
 		}
 		else
 		{
-			if (sx < 0x40) continue;
+			if (sx < 0x40)
+				continue;
 		}
 
 		int flipx = m_spriteram[offs + 3] & 0x04;
+		int flipy = m_spriteram[offs + 3] & 0x08;
 
-		if (flipy)
+		if (flip_screen())
 		{
 			flipx = !flipx;
-			sx = (235 - sx) & 0xff;  // The &0xff is not 100% percent correct
+			flipy = !flipy;
+			sx = (235 - sx) & 0xff; // The & 0xff is not 100% correct
 			sy = 240 - sy;
 		}
 
@@ -466,8 +453,6 @@ uint32_t trckydoc_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 }
 
 
-// machine
-
 void base_state::machine_start()
 {
 	save_item(NAME(m_irq_enable));
@@ -486,13 +471,13 @@ uint8_t sauro_state::sound_command_r()
 	return ret;
 }
 
-WRITE_LINE_MEMBER(base_state::vblank_irq)
+void base_state::vblank_irq(int state)
 {
 	if (state && m_irq_enable)
 		m_maincpu->set_input_line(0, ASSERT_LINE);
 }
 
-WRITE_LINE_MEMBER(base_state::irq_reset_w)
+void base_state::irq_reset_w(int state)
 {
 	m_irq_enable = !state;
 	if (m_irq_enable)
@@ -500,14 +485,9 @@ WRITE_LINE_MEMBER(base_state::irq_reset_w)
 }
 
 template <uint8_t Which>
-WRITE_LINE_MEMBER(base_state::coin_w)
+void base_state::coin_w(int state)
 {
 	machine().bookkeeping().coin_counter_w(Which, state);
-}
-
-WRITE_LINE_MEMBER(base_state::flip_screen_w)
-{
-	flip_screen_set(state);
 }
 
 void sauro_state::main_prg_map(address_map &map)
@@ -542,7 +522,7 @@ void sauro_state::sauro_sound_map(address_map &map)
 	map(0xc000, 0xc001).w("ymsnd", FUNC(ym3812_device::write));
 	map(0xa000, 0xa000).w("speech", FUNC(sp0256_device::ald_w));
 	map(0xe000, 0xe000).r(FUNC(sauro_state::sound_command_r));
-	map(0xe000, 0xe006).nopw();    // echo from write to e0000
+	map(0xe000, 0xe006).nopw(); // echo from write to e0000
 	map(0xe00e, 0xe00f).nopw();
 }
 
@@ -554,7 +534,7 @@ void sauro_state::saurobl_sound_map(address_map &map)
 	map(0xc000, 0xc001).w("ymsnd", FUNC(ym3812_device::write));
 	map(0xa000, 0xa000).nopw();
 	map(0xe000, 0xe000).r(FUNC(sauro_state::sound_command_r));
-	map(0xe000, 0xe006).nopw();    // echo from write to e0000
+	map(0xe000, 0xe006).nopw(); // echo from write to e0000
 	map(0xe00e, 0xe00f).nopw();
 }
 
@@ -589,7 +569,7 @@ static INPUT_PORTS_START( tecfri )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )    PORT_8WAY
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )  PORT_8WAY
 
-	PORT_START("P2")                                                  // See notes
+	PORT_START("P2") // See notes
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -667,7 +647,7 @@ static INPUT_PORTS_START( saurobl )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_JOYSTICK_UP )    PORT_8WAY
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_JOYSTICK_DOWN )  PORT_8WAY
 
-	PORT_START("P2")                                                  // See notes
+	PORT_START("P2") // See notes
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_START1 )
@@ -775,7 +755,7 @@ GFXDECODE_END
 void base_state::tecfri(machine_config &config)
 {
 	// Basic machine hardware
-	Z80(config, m_maincpu, XTAL(20'000'000) / 4);       // Verified on PCB
+	Z80(config, m_maincpu, XTAL(20'000'000) / 4); // Verified on PCB
 
 	LS259(config, m_mainlatch);
 	m_mainlatch->q_out_cb<4>().set(FUNC(base_state::irq_reset_w));
@@ -798,7 +778,7 @@ void base_state::tecfri(machine_config &config)
 	// Sound hardware
 	SPEAKER(config, "mono").front_center();
 
-	YM3812(config, "ymsnd", XTAL(20'000'000) / 8).add_route(ALL_OUTPUTS, "mono", 1.0);       // Verified on PCB
+	YM3812(config, "ymsnd", XTAL(20'000'000) / 8).add_route(ALL_OUTPUTS, "mono", 1.0); // Verified on PCB
 }
 
 void trckydoc_state::trckydoc(machine_config &config)
@@ -807,7 +787,7 @@ void trckydoc_state::trckydoc(machine_config &config)
 
 	m_maincpu->set_addrmap(AS_PROGRAM, &trckydoc_state::prg_map);
 
-	m_mainlatch->q_out_cb<1>().set(FUNC(trckydoc_state::flip_screen_w));
+	m_mainlatch->q_out_cb<1>().set(FUNC(trckydoc_state::flip_screen_set));
 	m_mainlatch->q_out_cb<2>().set(FUNC(trckydoc_state::coin_w<0>));
 	m_mainlatch->q_out_cb<3>().set(FUNC(trckydoc_state::coin_w<1>));
 
@@ -824,14 +804,14 @@ void sauro_state::saurobl(machine_config &config)
 	m_maincpu->set_addrmap(AS_IO, &sauro_state::main_io_map);
 
 	// Z3
-	m_mainlatch->q_out_cb<0>().set(FUNC(sauro_state::flip_screen_w));
+	m_mainlatch->q_out_cb<0>().set(FUNC(sauro_state::flip_screen_set));
 	m_mainlatch->q_out_cb<1>().set(FUNC(sauro_state::coin_w<0>));
 	m_mainlatch->q_out_cb<2>().set(FUNC(sauro_state::coin_w<1>));
 	m_mainlatch->q_out_cb<3>().set_nop(); // sound IRQ trigger?
 	m_mainlatch->q_out_cb<5>().set(FUNC(sauro_state::palette_bank0_w));
 	m_mainlatch->q_out_cb<6>().set(FUNC(sauro_state::palette_bank1_w));
 
-	z80_device &audiocpu(Z80(config, "audiocpu", XTAL(20'000'000) / 5));     // Verified on PCB
+	z80_device &audiocpu(Z80(config, "audiocpu", XTAL(20'000'000) / 5)); // Verified on PCB
 	audiocpu.set_addrmap(AS_PROGRAM, &sauro_state::saurobl_sound_map);
 	audiocpu.set_periodic_int(FUNC(sauro_state::irq0_line_hold), attotime::from_hz(8 * 60)); // ?
 
@@ -841,7 +821,7 @@ void sauro_state::saurobl(machine_config &config)
 
 	GENERIC_LATCH_8(config, m_soundlatch);
 
-	subdevice<ym3812_device>("ymsnd")->set_clock(XTAL(20'000'000) / 5);     // Verified on PCB
+	subdevice<ym3812_device>("ymsnd")->set_clock(XTAL(20'000'000) / 5); // Verified on PCB
 }
 
 void sauro_state::sauro(machine_config &config)
@@ -851,7 +831,7 @@ void sauro_state::sauro(machine_config &config)
 	subdevice<z80_device>("audiocpu")->set_addrmap(AS_PROGRAM, &sauro_state::sauro_sound_map);
 
 	// Sound hardware
-	sp0256_device &sp0256(SP0256(config, "speech", XTAL(20'000'000) / 5));     // Verified on PCB
+	sp0256_device &sp0256(SP0256(config, "speech", XTAL(20'000'000) / 5)); // Verified on PCB
 	sp0256.data_request_callback().set_inputline("audiocpu", INPUT_LINE_NMI);
 	sp0256.add_route(ALL_OUTPUTS, "mono", 1.0);
 }
@@ -885,13 +865,13 @@ ROM_START( sauro )
 	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
 
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x10000, "speech", 0 )
 	// SP0256 mask ROM
-	ROM_LOAD( "sp0256-al2.bin",   0x1000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
+	ROM_LOAD( "sp0256-al2.bin",  0x01000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
 ROM_END
 
 ROM_START( sauroa )
@@ -917,77 +897,109 @@ ROM_START( sauroa )
 	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
 
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x10000, "speech", 0 )
 	// SP0256 mask ROM
-	ROM_LOAD( "sp0256-al2.bin",   0x1000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
+	ROM_LOAD( "sp0256-al2.bin",  0x01000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
 ROM_END
 
 ROM_START( saurob )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "2 tecfri",     0x00000, 0x8000, CRC(961567c7) SHA1(08008381b1f74ec452c4eca821b66ddcdf32e4d5) )
-	ROM_LOAD( "1 tecfri",     0x08000, 0x8000, CRC(6b564429) SHA1(202bb9fa511a689f97980e01298900aca55ea84b) )
+	ROM_LOAD( "2 tecfri",        0x00000, 0x8000, CRC(961567c7) SHA1(08008381b1f74ec452c4eca821b66ddcdf32e4d5) )
+	ROM_LOAD( "1 tecfri",        0x08000, 0x8000, CRC(6b564429) SHA1(202bb9fa511a689f97980e01298900aca55ea84b) )
 
 	ROM_REGION( 0x10000, "audiocpu", 0 )
-	ROM_LOAD( "3 tecfri",     0x00000, 0x8000, CRC(3eca1c5c) SHA1(0a16ddfbc3bb948023456f1c9a32593cbca5d9b0) )
+	ROM_LOAD( "3 tecfri",        0x00000, 0x8000, CRC(3eca1c5c) SHA1(0a16ddfbc3bb948023456f1c9a32593cbca5d9b0) )
 
 	ROM_REGION( 0x10000, "bgtiles", 0 )
-	ROM_LOAD( "6 tecfri",     0x00000, 0x8000, CRC(4b77cb0f) SHA1(7b9cb2dca561d81390106c1a5c0533dcecaf6f1a) )
-	ROM_LOAD( "7 tecfri",     0x08000, 0x8000, CRC(187da060) SHA1(1df156e58379bb39acade02aabab6ff1cb7cc288) )
+	ROM_LOAD( "6 tecfri",        0x00000, 0x8000, CRC(4b77cb0f) SHA1(7b9cb2dca561d81390106c1a5c0533dcecaf6f1a) )
+	ROM_LOAD( "7 tecfri",        0x08000, 0x8000, CRC(187da060) SHA1(1df156e58379bb39acade02aabab6ff1cb7cc288) )
 
 	ROM_REGION( 0x10000, "fgtiles", 0 )
-	ROM_LOAD( "4 tecfri",     0x00000, 0x8000, CRC(9b617cda) SHA1(ce26b84ad5ecd6185ae218520e9972645bbf09ad) )
-	ROM_LOAD( "5 tecfri",     0x08000, 0x8000, CRC(a6e2640d) SHA1(346ffcf62e27ce8134f4e5e0dbcf11f110e19e04) )
+	ROM_LOAD( "4 tecfri",        0x00000, 0x8000, CRC(9b617cda) SHA1(ce26b84ad5ecd6185ae218520e9972645bbf09ad) )
+	ROM_LOAD( "5 tecfri",        0x08000, 0x8000, CRC(a6e2640d) SHA1(346ffcf62e27ce8134f4e5e0dbcf11f110e19e04) )
 
 	ROM_REGION( 0x20000, "sprites", 0 )
-	ROM_LOAD( "8 tecfri",     0x00000, 0x8000, CRC(e08b5d5e) SHA1(eaaeaa08b19c034ab2a2140f887edffca5f441b9) )
-	ROM_LOAD( "9 tecfri",     0x08000, 0x8000, CRC(7c707195) SHA1(0529f6808b0cec3e12ca51bee189841d21577786) )
-	ROM_LOAD( "10 tecfri",    0x10000, 0x8000, CRC(c93380d1) SHA1(fc9655cc94c2d2058f83eb341be7e7856a08194f) )
-	ROM_LOAD( "11 tecfri",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
+	ROM_LOAD( "8 tecfri",        0x00000, 0x8000, CRC(e08b5d5e) SHA1(eaaeaa08b19c034ab2a2140f887edffca5f441b9) )
+	ROM_LOAD( "9 tecfri",        0x08000, 0x8000, CRC(7c707195) SHA1(0529f6808b0cec3e12ca51bee189841d21577786) )
+	ROM_LOAD( "10 tecfri",       0x10000, 0x8000, CRC(c93380d1) SHA1(fc9655cc94c2d2058f83eb341be7e7856a08194f) )
+	ROM_LOAD( "11 tecfri",       0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
 
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x10000, "speech", 0 )
 	// SP0256 mask ROM
-	ROM_LOAD( "sp0256-al2.bin",   0x1000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
+	ROM_LOAD( "sp0256-al2.bin",  0x01000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
+ROM_END
+
+ROM_START( sauroc )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "sauro_facil.2",   0x00000, 0x8000, CRC(ac2e1290) SHA1(b7907ba7b910d88aed751d2129f60c783f8e583e) ) // Labeled as "facil" (easy)
+	ROM_LOAD( "sauro_facil.1",   0x08000, 0x8000, CRC(c7705d1d) SHA1(2f2781ece590eb11c08f2ab13d185a932f0b340b) ) // Labeled as "facil" (easy)
+
+	ROM_REGION( 0x10000, "audiocpu", 0 )
+	ROM_LOAD( "sauro-3.bin",     0x00000, 0x8000, CRC(0d501e1b) SHA1(20a56ff30d4fa5d2f483a449703b49153839f6bc) )
+
+	ROM_REGION( 0x10000, "bgtiles", 0 )
+	ROM_LOAD( "sauro-6.bin",     0x00000, 0x8000, CRC(4b77cb0f) SHA1(7b9cb2dca561d81390106c1a5c0533dcecaf6f1a) )
+	ROM_LOAD( "sauro-7.bin",     0x08000, 0x8000, CRC(187da060) SHA1(1df156e58379bb39acade02aabab6ff1cb7cc288) )
+
+	ROM_REGION( 0x10000, "fgtiles", 0 )
+	ROM_LOAD( "sauro-4.bin",     0x00000, 0x8000, CRC(9b617cda) SHA1(ce26b84ad5ecd6185ae218520e9972645bbf09ad) )
+	ROM_LOAD( "sauro-5.bin",     0x08000, 0x8000, CRC(a6e2640d) SHA1(346ffcf62e27ce8134f4e5e0dbcf11f110e19e04) )
+
+	ROM_REGION( 0x20000, "sprites", 0 )
+	ROM_LOAD( "sauro-8.bin",     0x00000, 0x8000, CRC(e08b5d5e) SHA1(eaaeaa08b19c034ab2a2140f887edffca5f441b9) )
+	ROM_LOAD( "sauro-9.bin",     0x08000, 0x8000, CRC(7c707195) SHA1(0529f6808b0cec3e12ca51bee189841d21577786) )
+	ROM_LOAD( "sauro-10.bin",    0x10000, 0x8000, CRC(c93380d1) SHA1(fc9655cc94c2d2058f83eb341be7e7856a08194f) )
+	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
+
+	ROM_REGION( 0x0c00, "proms", 0 )
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+
+	ROM_REGION( 0x10000, "speech", 0 )
+	// SP0256 mask ROM
+	ROM_LOAD( "sp0256-al2.bin",  0x01000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
 ROM_END
 
 ROM_START( saurop )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "s2.3k",     0x00000, 0x8000, CRC(79846222) SHA1(59ccfbaad0251f771c0fd624d00d93a50bca67d8) )
-	ROM_LOAD( "s1.3f",     0x08000, 0x8000, CRC(3efd13ed) SHA1(3920d21d5d9c285c5bcf47aa12b4e9a42294f149) )
+	ROM_LOAD( "s2.3k",           0x00000, 0x8000, CRC(79846222) SHA1(59ccfbaad0251f771c0fd624d00d93a50bca67d8) )
+	ROM_LOAD( "s1.3f",           0x08000, 0x8000, CRC(3efd13ed) SHA1(3920d21d5d9c285c5bcf47aa12b4e9a42294f149) )
 
 	ROM_REGION( 0x10000, "audiocpu", 0 )
-	ROM_LOAD( "s3.5x",     0x00000, 0x8000, CRC(0d501e1b) SHA1(20a56ff30d4fa5d2f483a449703b49153839f6bc) )
+	ROM_LOAD( "s3.5x",           0x00000, 0x8000, CRC(0d501e1b) SHA1(20a56ff30d4fa5d2f483a449703b49153839f6bc) )
 
 	ROM_REGION( 0x10000, "bgtiles", 0 )
-	ROM_LOAD( "s6.7x",     0x00000, 0x8000, CRC(4b77cb0f) SHA1(7b9cb2dca561d81390106c1a5c0533dcecaf6f1a) )
-	ROM_LOAD( "s7.7z",     0x08000, 0x8000, CRC(187da060) SHA1(1df156e58379bb39acade02aabab6ff1cb7cc288) )
+	ROM_LOAD( "s6.7x",           0x00000, 0x8000, CRC(4b77cb0f) SHA1(7b9cb2dca561d81390106c1a5c0533dcecaf6f1a) )
+	ROM_LOAD( "s7.7z",           0x08000, 0x8000, CRC(187da060) SHA1(1df156e58379bb39acade02aabab6ff1cb7cc288) )
 
 	ROM_REGION( 0x10000, "fgtiles", 0 )
-	ROM_LOAD( "s4.7h",     0x00000, 0x8000, CRC(9b617cda) SHA1(ce26b84ad5ecd6185ae218520e9972645bbf09ad) )
-	ROM_LOAD( "s5.7k",     0x08000, 0x8000, CRC(de5cd249) SHA1(e3752b88b539e1057a35619ffbad01720ab60d7d) )
+	ROM_LOAD( "s4.7h",           0x00000, 0x8000, CRC(9b617cda) SHA1(ce26b84ad5ecd6185ae218520e9972645bbf09ad) )
+	ROM_LOAD( "s5.7k",           0x08000, 0x8000, CRC(de5cd249) SHA1(e3752b88b539e1057a35619ffbad01720ab60d7d) )
 
 	ROM_REGION( 0x20000, "sprites", 0 )
-	ROM_LOAD( "s8.10l",     0x00000, 0x8000, CRC(e08b5d5e) SHA1(eaaeaa08b19c034ab2a2140f887edffca5f441b9) )
-	ROM_LOAD( "s9.10p",     0x08000, 0x8000, CRC(7c707195) SHA1(0529f6808b0cec3e12ca51bee189841d21577786) )
-	ROM_LOAD( "s10.10r",    0x10000, 0x8000, CRC(c93380d1) SHA1(fc9655cc94c2d2058f83eb341be7e7856a08194f) )
-	ROM_LOAD( "s11.10t",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
+	ROM_LOAD( "s8.10l",          0x00000, 0x8000, CRC(e08b5d5e) SHA1(eaaeaa08b19c034ab2a2140f887edffca5f441b9) )
+	ROM_LOAD( "s9.10p",          0x08000, 0x8000, CRC(7c707195) SHA1(0529f6808b0cec3e12ca51bee189841d21577786) )
+	ROM_LOAD( "s10.10r",         0x10000, 0x8000, CRC(c93380d1) SHA1(fc9655cc94c2d2058f83eb341be7e7856a08194f) )
+	ROM_LOAD( "s11.10t",         0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
 
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x10000, "speech", 0 )
 	// SP0256 mask ROM
-	ROM_LOAD( "sp0256-al2.bin",   0x1000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
+	ROM_LOAD( "sp0256-al2.bin",  0x01000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
 ROM_END
 
 ROM_START( saurorr ) // all roms have original Tecfri stickers
@@ -1013,9 +1025,9 @@ ROM_START( saurorr ) // all roms have original Tecfri stickers
 	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
 
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x10000, "speech", 0 )
 	// SP0256 mask ROM
@@ -1046,15 +1058,14 @@ ROM_START( seawolft )
 
 	// PROMs not dumped on this PCB
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x10000, "speech", 0 )
 	// SP0256 mask ROM, not dumped on this PCB, but it's a generic GI ROM
-	ROM_LOAD( "sp0256-al2.bin",   0x1000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
+	ROM_LOAD( "sp0256-al2.bin",  0x01000, 0x0800, CRC(b504ac15) SHA1(e60fcb5fa16ff3f3b69d36c7a6e955744d3feafc) )
 ROM_END
-
 
 /*
 Sauro (bootleg)
@@ -1070,7 +1081,6 @@ Other: ULN2003
 Only ROMs 01, 02 & 03 are different to existing archive.
 Color PROMs match existing archive. One extra PROM was found near ROMs 6 & 7 (sauropr4.16h)
 */
-
 ROM_START( saurobl )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sauro02.7c",      0x00000, 0x8000, CRC(72026b9a) SHA1(538f6bffab5cb0f7609a5afaab4d839baf26a1a7) )
@@ -1094,73 +1104,74 @@ ROM_START( saurobl )
 	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) ) // sauro11.14j
 
 	ROM_REGION( 0x0c00, "proms", 0 )
-	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
-	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
-	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
+	ROM_LOAD( "82s137-3.bin",    0x00000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  // Red component
+	ROM_LOAD( "82s137-2.bin",    0x00400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  // Green component
+	ROM_LOAD( "82s137-1.bin",    0x00800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  // Blue component
 
 	ROM_REGION( 0x0200, "user1", 0 ) // Unknown PROM was found near ROMs 6 & 7
-	ROM_LOAD( "sauropr4.16h",    0x0000, 0x0200, CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
+	ROM_LOAD( "sauropr4.16h",    0x00000, 0x0200, CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
 ROM_END
 
 
 ROM_START( trckydoc )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "trckydoc.d9",  0x0000,  0x8000, CRC(c6242fc3) SHA1(c8a6f6abe8b51061a113ed75fead0479df68ec40) )
-	ROM_LOAD( "trckydoc.b9",  0x8000,  0x8000, CRC(8645c840) SHA1(79c2acfc1aeafbe94afd9d230200bd7cdd7bcd1b) )
+	ROM_LOAD( "trckydoc.d9",     0x00000, 0x8000, CRC(c6242fc3) SHA1(c8a6f6abe8b51061a113ed75fead0479df68ec40) )
+	ROM_LOAD( "trckydoc.b9",     0x08000, 0x8000, CRC(8645c840) SHA1(79c2acfc1aeafbe94afd9d230200bd7cdd7bcd1b) )
 
 	ROM_REGION( 0x10000, "bgtiles", 0 )
 	ROM_LOAD( "trckydoc.e6",     0x00000, 0x8000, CRC(ec326392) SHA1(e6954fecc501a821caa21e67597914519fbbe58f) )
 	ROM_LOAD( "trckydoc.g6",     0x08000, 0x8000, CRC(6a65c088) SHA1(4a70c104809d86b4eef6cc0df9452966fe7c9859) )
 
 	ROM_REGION( 0x10000, "sprites", 0 )
-	ROM_LOAD( "trckydoc.h1",    0x00000, 0x4000, CRC(8b73cbf3) SHA1(d10f79a38c1596c90bac9cf4c64ba38ae6ecd8cb) )
-	ROM_LOAD( "trckydoc.e1",    0x04000, 0x4000, CRC(841be98e) SHA1(82da07490b73edcbffc3b9247205aab3a1f7d7ad) )
-	ROM_LOAD( "trckydoc.c1",    0x08000, 0x4000, CRC(1d25574b) SHA1(924e4376a7fe6cdfff0fa6045aaa3f7c0633d275) )
-	ROM_LOAD( "trckydoc.a1",    0x0c000, 0x4000, CRC(436c59ba) SHA1(2aa9c155c432a3c81420520c53bb944dcc613a94) )
+	ROM_LOAD( "trckydoc.h1",     0x00000, 0x4000, CRC(8b73cbf3) SHA1(d10f79a38c1596c90bac9cf4c64ba38ae6ecd8cb) )
+	ROM_LOAD( "trckydoc.e1",     0x04000, 0x4000, CRC(841be98e) SHA1(82da07490b73edcbffc3b9247205aab3a1f7d7ad) )
+	ROM_LOAD( "trckydoc.c1",     0x08000, 0x4000, CRC(1d25574b) SHA1(924e4376a7fe6cdfff0fa6045aaa3f7c0633d275) )
+	ROM_LOAD( "trckydoc.a1",     0x0c000, 0x4000, CRC(436c59ba) SHA1(2aa9c155c432a3c81420520c53bb944dcc613a94) )
 
 	ROM_REGION( 0x0c00, "proms", 0 ) // colour PROMs
-	ROM_LOAD( "tdclr3.prm",    0x0000, 0x0100, CRC(671d0140) SHA1(7d5fcd9589c46590b0a240cac428f993201bec2a) )
-	ROM_LOAD( "tdclr2.prm",    0x0400, 0x0100, CRC(874f9050) SHA1(db40d68f5166657fce0eadcd82143112b0388894) )
-	ROM_LOAD( "tdclr1.prm",    0x0800, 0x0100, CRC(57f127b0) SHA1(3d2b18a7a31933579f06d92fa0cc3f0e1fe8b98a) )
+	ROM_LOAD( "tdclr3.prm",      0x00000, 0x0100, CRC(671d0140) SHA1(7d5fcd9589c46590b0a240cac428f993201bec2a) )
+	ROM_LOAD( "tdclr2.prm",      0x00400, 0x0100, CRC(874f9050) SHA1(db40d68f5166657fce0eadcd82143112b0388894) )
+	ROM_LOAD( "tdclr1.prm",      0x00800, 0x0100, CRC(57f127b0) SHA1(3d2b18a7a31933579f06d92fa0cc3f0e1fe8b98a) )
 
 	ROM_REGION( 0x0200, "user1", 0 ) // unknown
-	ROM_LOAD( "tdprm.prm",    0x0000, 0x0200,  CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
+	ROM_LOAD( "tdprm.prm",       0x00000, 0x0200, CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
 ROM_END
 
 ROM_START( trckydoca )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "trckydca.d9",  0x0000,  0x8000, CRC(99c38aa4) SHA1(298a19439cc17743e10d101c50a26b9a7348299e) )
-	ROM_LOAD( "trckydca.b9",  0x8000,  0x8000, CRC(b6048a15) SHA1(d982fafbfa391ef9bab50bfd52607494e2a9eedf) )
+	ROM_LOAD( "trckydca.d9",     0x00000, 0x8000, CRC(99c38aa4) SHA1(298a19439cc17743e10d101c50a26b9a7348299e) )
+	ROM_LOAD( "trckydca.b9",     0x08000, 0x8000, CRC(b6048a15) SHA1(d982fafbfa391ef9bab50bfd52607494e2a9eedf) )
 
 	ROM_REGION( 0x10000, "bgtiles", 0 )
 	ROM_LOAD( "trckydoc.e6",     0x00000, 0x8000, CRC(ec326392) SHA1(e6954fecc501a821caa21e67597914519fbbe58f) )
 	ROM_LOAD( "trckydoc.g6",     0x08000, 0x8000, CRC(6a65c088) SHA1(4a70c104809d86b4eef6cc0df9452966fe7c9859) )
 
 	ROM_REGION( 0x10000, "sprites", 0 )
-	ROM_LOAD( "trckydoc.h1",    0x00000, 0x4000, CRC(8b73cbf3) SHA1(d10f79a38c1596c90bac9cf4c64ba38ae6ecd8cb) )
-	ROM_LOAD( "trckydoc.e1",    0x04000, 0x4000, CRC(841be98e) SHA1(82da07490b73edcbffc3b9247205aab3a1f7d7ad) )
-	ROM_LOAD( "trckydoc.c1",    0x08000, 0x4000, CRC(1d25574b) SHA1(924e4376a7fe6cdfff0fa6045aaa3f7c0633d275) )
-	ROM_LOAD( "trckydoc.a1",    0x0c000, 0x4000, CRC(436c59ba) SHA1(2aa9c155c432a3c81420520c53bb944dcc613a94) )
+	ROM_LOAD( "trckydoc.h1",     0x00000, 0x4000, CRC(8b73cbf3) SHA1(d10f79a38c1596c90bac9cf4c64ba38ae6ecd8cb) )
+	ROM_LOAD( "trckydoc.e1",     0x04000, 0x4000, CRC(841be98e) SHA1(82da07490b73edcbffc3b9247205aab3a1f7d7ad) )
+	ROM_LOAD( "trckydoc.c1",     0x08000, 0x4000, CRC(1d25574b) SHA1(924e4376a7fe6cdfff0fa6045aaa3f7c0633d275) )
+	ROM_LOAD( "trckydoc.a1",     0x0c000, 0x4000, CRC(436c59ba) SHA1(2aa9c155c432a3c81420520c53bb944dcc613a94) )
 
 	ROM_REGION( 0x0c00, "proms", 0 ) // colour PROMs
-	ROM_LOAD( "tdclr3.prm",    0x0000, 0x0100, CRC(671d0140) SHA1(7d5fcd9589c46590b0a240cac428f993201bec2a) )
-	ROM_LOAD( "tdclr2.prm",    0x0400, 0x0100, CRC(874f9050) SHA1(db40d68f5166657fce0eadcd82143112b0388894) )
-	ROM_LOAD( "tdclr1.prm",    0x0800, 0x0100, CRC(57f127b0) SHA1(3d2b18a7a31933579f06d92fa0cc3f0e1fe8b98a) )
+	ROM_LOAD( "tdclr3.prm",      0x00000, 0x0100, CRC(671d0140) SHA1(7d5fcd9589c46590b0a240cac428f993201bec2a) )
+	ROM_LOAD( "tdclr2.prm",      0x00400, 0x0100, CRC(874f9050) SHA1(db40d68f5166657fce0eadcd82143112b0388894) )
+	ROM_LOAD( "tdclr1.prm",      0x00800, 0x0100, CRC(57f127b0) SHA1(3d2b18a7a31933579f06d92fa0cc3f0e1fe8b98a) )
 
 	ROM_REGION( 0x0200, "user1", 0 ) // unknown
-	ROM_LOAD( "tdprm.prm",    0x0000, 0x0200,  CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
+	ROM_LOAD( "tdprm.prm",       0x00000, 0x0200, CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
 ROM_END
 
 } // anonymous namespace
 
 
-GAME( 1987, sauro,    0,        sauro,    tecfri,    sauro_state, empty_init, ROT0, "Tecfri",                                "Sauro (set 1)",                         MACHINE_SUPPORTS_SAVE )
-GAME( 1987, sauroa,   sauro,    sauro,    tecfri,    sauro_state, empty_init, ROT0, "Tecfri",                                "Sauro (set 2)",                         MACHINE_SUPPORTS_SAVE )
-GAME( 1987, saurob,   sauro,    sauro,    tecfri,    sauro_state, empty_init, ROT0, "Tecfri",                                "Sauro (set 3)",                         MACHINE_SUPPORTS_SAVE )
-GAME( 1987, saurop,   sauro,    sauro,    tecfri,    sauro_state, empty_init, ROT0, "Tecfri (Philko license)",               "Sauro (Philko license)",                MACHINE_SUPPORTS_SAVE )
-GAME( 1987, saurorr,  sauro,    sauro,    tecfri,    sauro_state, empty_init, ROT0, "Tecfri (Recreativos Real S.A. license)","Sauro (Recreativos Real S.A. license)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, saurobl,  sauro,    saurobl,  saurobl,   sauro_state, empty_init, ROT0, "bootleg",                               "Sauro (bootleg)",                       MACHINE_SUPPORTS_SAVE )
-GAME( 1987, seawolft, sauro,    sauro,    tecfri,    sauro_state, empty_init, ROT0, "Tecfri",                                "Sea Wolf (Tecfri)",                     MACHINE_SUPPORTS_SAVE )
+GAME( 1987, sauro,     0,        sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri",                                "Sauro (set 1)",                         MACHINE_SUPPORTS_SAVE )
+GAME( 1987, sauroa,    sauro,    sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri",                                "Sauro (set 2)",                         MACHINE_SUPPORTS_SAVE )
+GAME( 1987, saurob,    sauro,    sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri",                                "Sauro (set 3)",                         MACHINE_SUPPORTS_SAVE )
+GAME( 1987, sauroc,    sauro,    sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri",                                "Sauro (set 4, easier)",                 MACHINE_SUPPORTS_SAVE )
+GAME( 1987, saurop,    sauro,    sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri (Philko license)",               "Sauro (Philko license)",                MACHINE_SUPPORTS_SAVE )
+GAME( 1987, saurorr,   sauro,    sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri (Recreativos Real S.A. license)","Sauro (Recreativos Real S.A. license)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, saurobl,   sauro,    saurobl,  saurobl,   sauro_state,    empty_init, ROT0, "bootleg",                               "Sauro (bootleg)",                       MACHINE_SUPPORTS_SAVE )
+GAME( 1987, seawolft,  sauro,    sauro,    tecfri,    sauro_state,    empty_init, ROT0, "Tecfri",                                "Sea Wolf (Tecfri)",                     MACHINE_SUPPORTS_SAVE )
 
-GAME( 1987, trckydoc,  0,        trckydoc, tecfri,    trckydoc_state, empty_init, ROT0, "Tecfri", "Tricky Doc (set 1)", MACHINE_SUPPORTS_SAVE )
-GAME( 1987, trckydoca, trckydoc, trckydoc, trckydoca, trckydoc_state, empty_init, ROT0, "Tecfri", "Tricky Doc (set 2)", MACHINE_SUPPORTS_SAVE )
+GAME( 1987, trckydoc,  0,        trckydoc, tecfri,    trckydoc_state, empty_init, ROT0, "Tecfri",                                "Tricky Doc (set 1)",                    MACHINE_SUPPORTS_SAVE )
+GAME( 1987, trckydoca, trckydoc, trckydoc, trckydoca, trckydoc_state, empty_init, ROT0, "Tecfri",                                "Tricky Doc (set 2)",                    MACHINE_SUPPORTS_SAVE )

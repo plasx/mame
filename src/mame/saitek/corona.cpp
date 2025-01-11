@@ -1,19 +1,19 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Berger
-/***************************************************************************
+/*******************************************************************************
 
 Saitek Corona. Please refer to stratos.cpp for driver notes.
 
 To be brief, Saitek Corona has two "HELIOS" chips, I/O addressing is completely
 different compared to Stratos/Turbo King.
 
-***************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 #include "stratos.h"
 
-#include "cpu/m6502/m65c02.h"
+#include "cpu/m6502/w65c02.h"
 #include "machine/nvram.h"
 #include "machine/sensorboard.h"
 #include "sound/dac.h"
@@ -24,18 +24,18 @@ different compared to Stratos/Turbo King.
 #include "speaker.h"
 
 // internal artwork
-#include "saitek_corona.lh" // clickable
+#include "saitek_corona.lh"
 
 
 namespace {
 
-// note: sub-class of saitek_stratos_state (see stratos.h, stratos.cpp)
+// note: sub-class of stratos_base_state (see stratos.h, stratos.cpp)
 
-class corona_state : public saitek_stratos_state
+class corona_state : public stratos_base_state
 {
 public:
 	corona_state(const machine_config &mconfig, device_type type, const char *tag) :
-		saitek_stratos_state(mconfig, type, tag),
+		stratos_base_state(mconfig, type, tag),
 		m_rombank(*this, "rombank"),
 		m_board(*this, "board"),
 		m_dac(*this, "dac"),
@@ -46,17 +46,24 @@ public:
 	void corona(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	// devices/pointers
 	memory_view m_rombank;
 	required_device<sensorboard_device> m_board;
-	required_device<dac_bit_interface> m_dac;
+	required_device<dac_1bit_device> m_dac;
 	required_ioport_array<8+1> m_inputs;
 
-	void main_map(address_map &map);
+	u8 m_control1 = 0;
+	u8 m_control2 = 0;
+	u8 m_select1 = 0;
+	u8 m_select2 = 0;
+	u8 m_led_data1 = 0;
+	u8 m_led_data2 = 0;
+
+	void main_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	void update_leds();
@@ -70,18 +77,11 @@ private:
 	u8 control2_r();
 	u8 chessboard_r();
 	void lcd_reset_w(u8 data);
-
-	u8 m_control1 = 0;
-	u8 m_control2 = 0;
-	u8 m_select1 = 0;
-	u8 m_select2 = 0;
-	u8 m_led_data1 = 0;
-	u8 m_led_data2 = 0;
 };
 
 void corona_state::machine_start()
 {
-	saitek_stratos_state::machine_start();
+	stratos_base_state::machine_start();
 
 	// register for savestates
 	save_item(NAME(m_control1));
@@ -94,7 +94,7 @@ void corona_state::machine_start()
 
 void corona_state::machine_reset()
 {
-	saitek_stratos_state::machine_reset();
+	stratos_base_state::machine_reset();
 
 	m_control2 = 0;
 	m_rombank.select(0);
@@ -102,9 +102,9 @@ void corona_state::machine_reset()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
+*******************************************************************************/
 
 // HELIOS
 
@@ -216,9 +216,9 @@ void corona_state::lcd_reset_w(u8 data)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void corona_state::main_map(address_map &map)
 {
@@ -240,9 +240,9 @@ void corona_state::main_map(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( corona )
 	PORT_INCLUDE( saitek_stratos )
@@ -253,14 +253,14 @@ INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void corona_state::corona(machine_config &config)
 {
-	/* basic machine hardware */
-	M65C02(config, m_maincpu, 5_MHz_XTAL); // see set_cpu_freq
+	// basic machine hardware
+	W65C02(config, m_maincpu, 5_MHz_XTAL); // see change_cpu_freq
 	m_maincpu->set_addrmap(AS_PROGRAM, &corona_state::main_map);
 	m_maincpu->set_periodic_int(FUNC(corona_state::irq0_line_hold), attotime::from_hz(183));
 
@@ -271,24 +271,24 @@ void corona_state::corona(machine_config &config)
 	m_board->set_delay(attotime::from_msec(200));
 	m_board->set_nvram_enable(true);
 
-	/* video hardware */
+	// video hardware
 	PWM_DISPLAY(config, m_display).set_size(3+8, 8);
 	config.set_default_layout(layout_saitek_corona);
 
-	/* sound hardware */
+	// sound hardware
 	SPEAKER(config, "speaker").front_center();
 	DAC_1BIT(config, m_dac).add_route(ALL_OUTPUTS, "speaker", 0.25);
 
-	/* extension rom */
+	// extension rom
 	GENERIC_SOCKET(config, "extrom", generic_plain_slot, "saitek_egr");
 	SOFTWARE_LIST(config, "cart_list").set_original("saitek_egr").set_filter("egr2");
 }
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( corona )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -312,11 +312,11 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-/*    YEAR  NAME      PARENT  CMP MACHINE  INPUT   CLASS         INIT        COMPANY, FULLNAME, FLAGS */
-CONS( 1990, corona,   0,       0, corona,  corona, corona_state, empty_init, "Saitek", "Kasparov Corona (ver. D+)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK ) // aka Corona II
-CONS( 1988, coronaa,  corona,  0, corona,  corona, corona_state, empty_init, "Saitek", "Kasparov Corona (ver. C, set 1)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
-CONS( 1988, coronab,  corona,  0, corona,  corona, corona_state, empty_init, "Saitek", "Kasparov Corona (ver. C, set 2)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME      PARENT   COMPAT  MACHINE  INPUT   CLASS         INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1990, corona,   0,       0,      corona,  corona, corona_state, empty_init, "Saitek / Heuristic Software", "Kasparov Corona (ver. D+)", MACHINE_SUPPORTS_SAVE ) // aka Corona II
+SYST( 1988, coronaa,  corona,  0,      corona,  corona, corona_state, empty_init, "Saitek / Heuristic Software", "Kasparov Corona (ver. C, set 1)", MACHINE_SUPPORTS_SAVE )
+SYST( 1988, coronab,  corona,  0,      corona,  corona, corona_state, empty_init, "Saitek / Heuristic Software", "Kasparov Corona (ver. C, set 2)", MACHINE_SUPPORTS_SAVE )

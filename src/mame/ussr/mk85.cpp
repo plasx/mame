@@ -25,6 +25,8 @@ Models:
 #include "screen.h"
 
 
+namespace {
+
 class mk85_state : public driver_device
 {
 public:
@@ -37,10 +39,10 @@ public:
 	void mk85(machine_config &config);
 
 private:
-	virtual void machine_reset() override;
-	virtual void machine_start() override;
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void machine_start() override ATTR_COLD;
 
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -97,6 +99,9 @@ ROM_START( mk85 )
 	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD( "mk85.rom", 0x0000, 0x4000, CRC(398e4fd1) SHA1(5e2f877d0f451b46840f01190004552bad5248c8))
 ROM_END
+
+} // anonymous namespace
+
 
 /* Driver */
 

@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:hap
 // thanks-to:Sean Riddle
-/******************************************************************************
+/*******************************************************************************
 
 Fidelity Mini Sensory Chess Challenger (model MSC, 1981 version)
 
@@ -11,7 +11,8 @@ panel design, the 2nd version has rectangular buttons. See sc6.cpp for the
 2nd version.
 
 Hardware notes:
-- Zilog Z8 MCU(custom label, probably Z8601), 8MHz XTAL
+- Zilog Z8 MCU (probably Z8601, custom label: SR0016 1001011A01 or SR0022
+  1001011B01), 8MHz XTAL
 - buzzer, 18 leds, 8*8 chessboard buttons, module slot
 
 released modules, * denotes not dumped yet:
@@ -22,22 +23,22 @@ released modules, * denotes not dumped yet:
 As noted in the hash file: The modules have 2 programs in them, one for Z8
 and one for MCS48. A12 is forced high or low to select the bank.
 
-******************************************************************************/
+*******************************************************************************/
 
 #include "emu.h"
 
+#include "bus/generic/slot.h"
+#include "bus/generic/carts.h"
 #include "cpu/z8/z8.h"
 #include "machine/sensorboard.h"
 #include "sound/dac.h"
 #include "video/pwm.h"
-#include "bus/generic/slot.h"
-#include "bus/generic/carts.h"
 
 #include "softlist_dev.h"
 #include "speaker.h"
 
 // internal artwork
-#include "fidel_msc_v1.lh" // clickable
+#include "fidel_msc_v1.lh"
 
 
 namespace {
@@ -54,35 +55,29 @@ public:
 		m_inputs(*this, "IN.0")
 	{ }
 
-	// machine configs
 	void msc(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
+	virtual void machine_start() override ATTR_COLD;
 
 private:
 	// devices/pointers
 	required_device<z8_device> m_maincpu;
 	required_device<sensorboard_device> m_board;
 	required_device<pwm_display_device> m_display;
-	required_device<dac_bit_interface> m_dac;
+	required_device<dac_1bit_device> m_dac;
 	required_ioport m_inputs;
 
-	// address maps
-	void main_map(address_map &map);
+	u8 m_led_select = 0;
+	u16 m_inp_mux = 0;
+
+	void main_map(address_map &map) ATTR_COLD;
 
 	// I/O handlers
 	void update_display();
 	void mux_w(u8 data);
 	void control_w(u8 data);
-	u8 rom_r(offs_t offset);
-
-	u8 read_inputs();
-	u8 input_hi_r();
-	u8 input_lo_r();
-
-	u8 m_led_select = 0;
-	u16 m_inp_mux = 0;
+	u8 input_r();
 };
 
 void msc_state::machine_start()
@@ -94,11 +89,9 @@ void msc_state::machine_start()
 
 
 
-/******************************************************************************
+/*******************************************************************************
     I/O
-******************************************************************************/
-
-// MCU ports/generic
+*******************************************************************************/
 
 void msc_state::update_display()
 {
@@ -114,18 +107,20 @@ void msc_state::mux_w(u8 data)
 
 void msc_state::control_w(u8 data)
 {
-	// P37: input mux highest bit
-	// P35,P36: led select
-	m_inp_mux = (m_inp_mux & 0xff) | (data << 1 & 0x100);
-	m_led_select = ~data >> 5 & 3;
-	update_display();
-
 	// P34: speaker out
 	m_dac->write(BIT(~data, 4));
+
+	// P35,P36: led select
+	m_led_select = ~data >> 5 & 3;
+
+	// P37: input mux highest bit, led data
+	m_inp_mux = (m_inp_mux & 0xff) | (data << 1 & 0x100);
+	update_display();
 }
 
-u8 msc_state::read_inputs()
+u8 msc_state::input_r()
 {
+	// P30-P33,P04-P07: multiplexed inputs
 	u8 data = 0;
 
 	// read chessboard sensors
@@ -140,23 +135,11 @@ u8 msc_state::read_inputs()
 	return bitswap<8>(~data,0,1,2,3,4,5,6,7);
 }
 
-u8 msc_state::input_hi_r()
-{
-	// P04-P07: multiplexed inputs high
-	return read_inputs() | 0x0f;
-}
-
-u8 msc_state::input_lo_r()
-{
-	// P30-P33: multiplexed inputs low
-	return read_inputs() | 0xf0;
-}
 
 
-
-/******************************************************************************
+/*******************************************************************************
     Address Maps
-******************************************************************************/
+*******************************************************************************/
 
 void msc_state::main_map(address_map &map)
 {
@@ -165,9 +148,9 @@ void msc_state::main_map(address_map &map)
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Input Ports
-******************************************************************************/
+*******************************************************************************/
 
 static INPUT_PORTS_START( msc )
 	PORT_START("IN.0")
@@ -178,47 +161,49 @@ static INPUT_PORTS_START( msc )
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_5_PAD) PORT_NAME("PV / Queen")
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_6_PAD) PORT_NAME("PB / King")
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_DEL) PORT_CODE(KEYCODE_BACKSPACE) PORT_NAME("CL")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_NAME("RE")
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYPAD) PORT_CODE(KEYCODE_R) PORT_CODE(KEYCODE_N) PORT_NAME("RE")
 INPUT_PORTS_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Machine Configs
-******************************************************************************/
+*******************************************************************************/
 
 void msc_state::msc(machine_config &config)
 {
-	/* basic machine hardware */
+	// basic machine hardware
 	Z8601(config, m_maincpu, 8_MHz_XTAL);
 	m_maincpu->set_addrmap(AS_PROGRAM, &msc_state::main_map);
-	m_maincpu->p0_in_cb().set(FUNC(msc_state::input_hi_r));
+	m_maincpu->p0_in_cb().set(FUNC(msc_state::input_r)).mask(0xf0);
+	m_maincpu->p0_in_cb().append_constant(0x0f).mask(0x0f);
 	m_maincpu->p2_out_cb().set(FUNC(msc_state::mux_w));
-	m_maincpu->p3_in_cb().set(FUNC(msc_state::input_lo_r));
+	m_maincpu->p3_in_cb().set(FUNC(msc_state::input_r)).mask(0x0f);
+	m_maincpu->p3_in_cb().append_constant(0xf0).mask(0xf0);
 	m_maincpu->p3_out_cb().set(FUNC(msc_state::control_w));
 
 	SENSORBOARD(config, m_board).set_type(sensorboard_device::BUTTONS);
 	m_board->init_cb().set(m_board, FUNC(sensorboard_device::preset_chess));
 	m_board->set_delay(attotime::from_msec(150));
 
-	/* video hardware */
+	// video hardware
 	PWM_DISPLAY(config, m_display).set_size(2, 9);
 	config.set_default_layout(layout_fidel_msc_v1);
 
-	/* sound hardware */
+	// sound hardware
 	SPEAKER(config, "speaker").front_center();
 	DAC_1BIT(config, m_dac).add_route(ALL_OUTPUTS, "speaker", 0.25);
 
-	/* cartridge */
+	// cartridge
 	GENERIC_CARTSLOT(config, "cartslot", generic_plain_slot, "fidel_msc");
 	SOFTWARE_LIST(config, "cart_list").set_original("fidel_msc");
 }
 
 
 
-/******************************************************************************
+/*******************************************************************************
     ROM Definitions
-******************************************************************************/
+*******************************************************************************/
 
 ROM_START( miniscco )
 	ROM_REGION( 0x0800, "maincpu", 0 )
@@ -229,9 +214,9 @@ ROM_END
 
 
 
-/******************************************************************************
+/*******************************************************************************
     Drivers
-******************************************************************************/
+*******************************************************************************/
 
-//    YEAR  NAME      PARENT  CMP MACHINE  INPUT  CLASS      INIT        COMPANY, FULLNAME, FLAGS
-CONS( 1981, miniscco, miniscc, 0, msc,     msc,   msc_state, empty_init, "Fidelity Electronics", "Mini Sensory Chess Challenger (1981 version)", MACHINE_SUPPORTS_SAVE | MACHINE_CLICKABLE_ARTWORK )
+//    YEAR  NAME      PARENT   COMPAT  MACHINE  INPUT  CLASS      INIT        COMPANY, FULLNAME, FLAGS
+SYST( 1981, miniscco, miniscc, 0,      msc,     msc,   msc_state, empty_init, "Fidelity Electronics", "Mini Sensory Chess Challenger (Z8 version)", MACHINE_SUPPORTS_SAVE )

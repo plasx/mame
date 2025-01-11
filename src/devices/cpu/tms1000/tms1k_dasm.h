@@ -25,18 +25,7 @@ public:
 	virtual offs_t disassemble(std::ostream &stream, offs_t pc, const data_buffer &opcodes, const data_buffer &params) override;
 
 protected:
-	enum e_mnemonics
-	{
-		zILL = 0,
-		zAC0AC, zAC1AC, zACACC, zACNAA, zALEC, zALEM, zAMAAC, zBRANCH, zCALL, zCCLA,
-		zCLA, zCLO, zCOMC, zCOMX, zCOMX8, zCPAIZ, zCTMDYN, zDAN, zDMAN, zDMEA, zDNAA,
-		zDYN, zIA, zIMAC, zIYC, zKNEZ, zLDP, zLDX2, zLDX3, zLDX4, zMNEA, zMNEZ,
-		zNDMEA, zOFF, zRBIT, zREAC, zRETN, zRSTR, zSAL, zSAMAN, zSBIT,
-		zSBL, zSEAC, zSETR, zTAC, zTADM, zTAM, zTAMACS, zTAMDYN, zTAMIY, zTAMIYC, zTAMZA,
-		zTAX, zTAY, zTBIT, zTCA, zTCMIY, zTCY, zTDO, zTKA, zTKM, zTMA,
-		zTMY, zTPC, zTRA, zTXA, zTYA, zXDA, zXMA, zYMCY, zYNEA, zYNEC
-	};
-
+	enum e_mnemonics : unsigned;
 	static const char *const s_mnemonic[];
 	static const u32 s_flags[];
 	static const u8 s_bits[];
@@ -108,6 +97,16 @@ private:
 	static const u8 tms2400_mnemonic[256];
 };
 
+class smc1102_disassembler : public tms1100_disassembler
+{
+public:
+	smc1102_disassembler();
+	virtual ~smc1102_disassembler() = default;
+
+private:
+	static const u8 smc1102_mnemonic[256];
+};
+
 class tms0980_disassembler : public tms1000_base_disassembler
 {
 public:
@@ -128,4 +127,4 @@ private:
 	static const u8 tp0320_mnemonic[512];
 };
 
-#endif
+#endif // MAME_CPU_TMS1000_TMS1K_DASM_H

@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Sergey Svishchev
-#ifndef MAME_MACHINE_IBM6580_KBD_H
-#define MAME_MACHINE_IBM6580_KBD_H
+#ifndef MAME_IBM_IBM6580_KBD_H
+#define MAME_IBM_IBM6580_KBD_H
 
 #pragma once
 
@@ -18,16 +18,16 @@ public:
 
 	int memory_record_r() { return m_mr->read(); }
 
-	DECLARE_WRITE_LINE_MEMBER(reset_w);
-	DECLARE_WRITE_LINE_MEMBER(ack_w);
+	void reset_w(int state);
+	void ack_w(int state);
 
 protected:
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
-	virtual ioport_constructor device_input_ports() const override;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
+	virtual ioport_constructor device_input_ports() const override ATTR_COLD;
 
-	void device_start() override;
-	void device_reset() override;
+	void device_start() override ATTR_COLD;
+	void device_reset() override ATTR_COLD;
 
 private:
 	uint8_t m_dip, m_bus, m_p2;
@@ -48,4 +48,4 @@ private:
 
 DECLARE_DEVICE_TYPE(DW_KEYBOARD, dw_keyboard_device)
 
-#endif // MAME_MACHINE_IBM6580_KBD_H
+#endif // MAME_IBM_IBM6580_KBD_H

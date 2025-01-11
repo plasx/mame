@@ -31,6 +31,8 @@ http://mamedev.emulab.it/haze/reference/sawatte/cartridge_example.jpg
 #include "softlist_dev.h"
 
 
+namespace {
+
 class sawatte_state : public driver_device
 {
 public:
@@ -50,8 +52,8 @@ public:
 	void sawatte(machine_config &config);
 
 protected:
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
 private:
 	TIMER_CALLBACK_MEMBER(irq3_timer);
@@ -68,7 +70,7 @@ private:
 	u8 data_bank_r(offs_t offset);
 	u8 prog_bank_r(offs_t offset);
 
-	void mem_map(address_map &map);
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_device<generic_slot_device> m_cartslot;
@@ -246,5 +248,7 @@ void sawatte_state::sawatte(machine_config &config)
 ROM_START( sawatte )
 ROM_END
 
+} // anonymous namespace
 
-CONS( 1996?, sawatte, 0, 0, sawatte,  sawatte, sawatte_state, empty_init, "Sega", "Sawatte", MACHINE_IS_SKELETON )
+
+CONS( 1996?, sawatte, 0, 0, sawatte,  sawatte, sawatte_state, empty_init, "Sega", "Sawatte", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

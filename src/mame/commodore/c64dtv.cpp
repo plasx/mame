@@ -15,6 +15,8 @@ Crystals: 32.720 (X1), unmarked (X2).
 #include "screen.h"
 
 
+namespace {
+
 //**************************************************************************
 //  DRIVER STATE
 //**************************************************************************
@@ -73,10 +75,11 @@ ROM_START( c64dtv )
 	ROM_LOAD( "flash.u2", 0x000000, 0x200000, CRC(b820375a) SHA1(b9f88919e2bed825eb2b2cb605977d55971b423b) )
 ROM_END
 
+} // anonymous namespace
 
 
 //**************************************************************************
 //  GAME DRIVERS
 //**************************************************************************
 
-CONS( 2005, c64dtv, 0, 0, c64dtv, c64dtv, c64dtv_state, empty_init, "The Toy:Lobster Company", "Commodore 64 Direct-to-TV (Version 2 050711) (PAL)", MACHINE_IS_SKELETON )
+CONS( 2005, c64dtv, 0, 0, c64dtv, c64dtv, c64dtv_state, empty_init, "The Toy:Lobster Company", "Commodore 64 Direct-to-TV (Version 2 050711) (PAL)", MACHINE_NO_SOUND | MACHINE_NOT_WORKING )

@@ -1,7 +1,7 @@
 // license:LGPL-2.1+
 // copyright-holders:Angelo Salese
-#ifndef MAME_MACHINE_NB1414M4_H
-#define MAME_MACHINE_NB1414M4_H
+#ifndef MAME_NICHIBUTSU_NB1414M4_H
+#define MAME_NICHIBUTSU_NB1414M4_H
 
 #pragma once
 
@@ -17,8 +17,8 @@ public:
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual void device_reset() override;
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
 
 private:
 	void dma(uint16_t src, uint16_t dst, uint16_t size, uint8_t condition, uint8_t *vram);
@@ -38,4 +38,4 @@ private:
 
 DECLARE_DEVICE_TYPE(NB1414M4, nb1414m4_device)
 
-#endif // MAME_MACHINE_NB1414M4_H
+#endif // MAME_NICHIBUTSU_NB1414M4_H

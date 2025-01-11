@@ -5,8 +5,8 @@
  * includes/lviv.h
  *
  ****************************************************************************/
-#ifndef MAME_INCLUDES_LVIV_H
-#define MAME_INCLUDES_LVIV_H
+#ifndef MAME_USSR_LVIV_H
+#define MAME_USSR_LVIV_H
 
 #pragma once
 
@@ -41,8 +41,8 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(reset_button);
 
 private:
-	void machine_reset() override;
-	void machine_start() override;
+	void machine_reset() override ATTR_COLD;
+	void machine_start() override ATTR_COLD;
 
 	void lviv_palette(palette_device &palette) const;
 	uint32_t screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -69,12 +69,12 @@ private:
 	void update_palette(uint8_t pal);
 
 	void update_memory();
-	void setup_snapshot(uint8_t * data);
+	void setup_snapshot(uint8_t *data);
 	void dump_registers();
-	image_verify_result verify_snapshot(uint8_t * data, uint32_t size);
+	std::pair<std::error_condition, std::string> verify_snapshot(const uint8_t * data, uint32_t size);
 
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_device<ram_device> m_ram;
@@ -97,4 +97,4 @@ private:
 	static const rgb_t s_palette[8];
 };
 
-#endif // MAME_INCLUDES_LVIV_H
+#endif // MAME_USSR_LVIV_H

@@ -11,6 +11,9 @@ Skeleton driver for HP-700 series terminals.
 #include "machine/mc68681.h"
 #include "machine/nvram.h"
 
+
+namespace {
+
 class hp700_state : public driver_device
 {
 public:
@@ -24,9 +27,9 @@ public:
 	void hp700_70(machine_config &config);
 
 private:
-	void io_map(address_map &map);
-	void mem_map(address_map &map);
-	void hp700_70_map(address_map &map);
+	void io_map(address_map &map) ATTR_COLD;
+	void mem_map(address_map &map) ATTR_COLD;
+	void hp700_70_map(address_map &map) ATTR_COLD;
 
 	required_device<cpu_device> m_maincpu;
 	required_device<scn2681_device> m_duart;
@@ -138,5 +141,8 @@ ROM_START(hp700_70)
 	ROM_LOAD("c1093-80009.u817", 0x20000, 0x20000, CRC(369e6855) SHA1(938ac9cd120d0aa7c76011d1a5e91244a142b397)) // "CKSM 7B6B"
 ROM_END
 
-COMP(1987, hp700_92, 0, 0, hp700_92, hp700_92, hp700_state, empty_init, "Hewlett-Packard", "HP 700/92 Display Terminal", MACHINE_IS_SKELETON)
-COMP(1994, hp700_70, 0, 0, hp700_70, hp700_92, hp700_state, empty_init, "Hewlett-Packard", "HP 700/70 Windowing Terminal", MACHINE_IS_SKELETON)
+} // anonymous namespace
+
+
+COMP(1987, hp700_92, 0, 0, hp700_92, hp700_92, hp700_state, empty_init, "Hewlett-Packard", "HP 700/92 Display Terminal", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)
+COMP(1994, hp700_70, 0, 0, hp700_70, hp700_92, hp700_state, empty_init, "Hewlett-Packard", "HP 700/70 Windowing Terminal", MACHINE_NO_SOUND | MACHINE_NOT_WORKING)

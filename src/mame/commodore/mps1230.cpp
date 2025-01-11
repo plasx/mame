@@ -10,6 +10,7 @@
 
 Commodore MPS-1230 Dot Matrix Printer
 Commodore 1988/89
+Hardware info by Guru
 
 This is a 9-pin dot matrix printer manufactured by Commodore (possibly under license from Olivetti)
 The printer is based on the Olivetti DM100 9-pin dot matrix printer with an added Commodore
@@ -82,6 +83,9 @@ Notes: (all IC's shown)
 #include "cpu/upd7810/upd7810.h"
 #include "cpu/z80/z80.h"
 
+
+namespace {
+
 #define CPU_TAG "maincpu"
 
 class mps1230_state : public driver_device
@@ -98,10 +102,10 @@ public:
 private:
 	required_device<cpu_device> m_maincpu;
 
-	virtual void machine_start() override;
-	virtual void machine_reset() override;
+	virtual void machine_start() override ATTR_COLD;
+	virtual void machine_reset() override ATTR_COLD;
 
-	void mps1230_map(address_map &map);
+	void mps1230_map(address_map &map) ATTR_COLD;
 };
 
 /***************************************************************************
@@ -171,6 +175,9 @@ ROM_START(mps1230)
 	ROM_LOAD( "peek.f03ee",   0x000000, 0x010000, CRC(b5215f25) SHA1(dcfdd16942652447c472301392d9b39514547af1) ) // ver 2.1E, 09/AUG/1989
 ROM_END
 
+} // anonymous namespace
+
+
 /*    YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT    CLASS          INIT        COMPANY                        FULLNAME */
-COMP( 1986, mps1000, 0,      0,      mps1000, mps1230, mps1230_state, empty_init, "Commodore Business Machines", "MPS-1000 Printer",     MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW | MACHINE_TYPE_OTHER )
-COMP( 1988, mps1230, 0,      0,      mps1230, mps1230, mps1230_state, empty_init, "Commodore Business Machines", "MPS-1230 NLQ Printer", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW | MACHINE_TYPE_OTHER )
+SYST( 1986, mps1000, 0,      0,      mps1000, mps1230, mps1230_state, empty_init, "Commodore Business Machines", "MPS-1000 Printer",     MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )
+SYST( 1988, mps1230, 0,      0,      mps1230, mps1230, mps1230_state, empty_init, "Commodore Business Machines", "MPS-1230 NLQ Printer", MACHINE_NOT_WORKING | MACHINE_NO_SOUND_HW )

@@ -1,7 +1,7 @@
 // license:BSD-3-Clause
 // copyright-holders:Aaron Giles
-#ifndef MAME_AUDIO_NAMCO54_H
-#define MAME_AUDIO_NAMCO54_H
+#ifndef MAME_NAMCO_NAMCO54_H
+#define MAME_NAMCO_NAMCO54_H
 
 #include "sound/discrete.h"
 #include "cpu/mb88xx/mb88xx.h"
@@ -15,15 +15,15 @@ public:
 	template <typename T> void set_discrete(T &&tag) { m_discrete.set_tag(std::forward<T>(tag)); }
 	void set_basenote(int node) { m_basenode = node; }
 
-	DECLARE_WRITE_LINE_MEMBER( reset );
-	WRITE_LINE_MEMBER( chip_select );
+	void reset(int state);
+	void chip_select(int state);
 	void write(uint8_t data);
 
 protected:
 	// device-level overrides
-	virtual void device_start() override;
-	virtual const tiny_rom_entry *device_rom_region() const override;
-	virtual void device_add_mconfig(machine_config &config) override;
+	virtual void device_start() override ATTR_COLD;
+	virtual const tiny_rom_entry *device_rom_region() const override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 private:
 	// internal state
@@ -35,13 +35,12 @@ private:
 
 	uint8_t K_r();
 	uint8_t R0_r();
-	void O_w(uint8_t data);
+	void O_w(offs_t offset, uint8_t data, uint8_t mem_mask);
 	void R1_w(uint8_t data);
-	TIMER_CALLBACK_MEMBER( write_sync );
+	TIMER_CALLBACK_MEMBER(write_sync);
 };
 
 DECLARE_DEVICE_TYPE(NAMCO_54XX, namco_54xx_device)
-
 
 
 /* discrete nodes */
@@ -51,4 +50,4 @@ DECLARE_DEVICE_TYPE(NAMCO_54XX, namco_54xx_device)
 #define NAMCO_54XX_P_DATA(base)     (NODE_RELATIVE(base, 3))
 
 
-#endif // MAME_AUDIO_NAMCO54_H
+#endif // MAME_NAMCO_NAMCO54_H
